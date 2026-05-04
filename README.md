@@ -21,4 +21,8 @@ python main.py
 
 📸 Capture d'écran
 
+<img width="626" height="345" alt="Capture d’écran 2026-05-04 185311" src="https://github.com/user-attachments/assets/f0e7cd70-0d1c-496e-bb60-ce5c790e2f02" />
 
+
+
+Update README.md
