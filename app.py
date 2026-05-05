@@ -10,114 +10,231 @@ import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024 # Limiter les uploads de logs à 1 Mo
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024 
 
-# Le design complet du site (HTML/CSS)
+# --- LE NOUVEAU DESIGN PRO ---
 LAYOUT_HTML = """
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>PySecOps Cloud - by hyacinthe</title>
+    <title>PySecOps Cloud - Security Dashboard</title>
     <style>
-        body { background-color: #121212; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; min-height: 100vh; }
-        .sidebar { width: 220px; background-color: #1e1e1e; padding: 20px 0; border-right: 1px solid #333; }
-        .sidebar h2 { color: #00ff00; text-align: center; font-family: 'Courier New', monospace; margin-bottom: 40px; }
-        .sidebar a { display: block; padding: 15px 20px; color: #aaa; text-decoration: none; transition: 0.3s; }
-        .sidebar a:hover, .sidebar a.active { background-color: #333; color: #00ff00; border-left: 4px solid #00ff00; }
-        .content { flex: 1; padding: 40px; }
-        .card { background-color: #1e1e1e; padding: 20px; border-radius: 8px; border: 1px solid #333; margin-bottom: 20px; }
-        input[type="text"], input[type="file"] { padding: 10px; width: 60%; background: #2d2d2d; color: #0f0; border: 1px solid #444; border-radius: 4px; }
-        button { padding: 10px 20px; background: #00ff00; color: #000; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        button:hover { background: #00cc00; }
-        .result-box { background: #000; padding: 20px; border-left: 4px solid #00ff00; margin-top: 20px; font-family: 'Courier New', monospace; white-space: pre-wrap; }
-        .haute { color: #ff4444; } .moyenne { color: #ffaa00; } .ok { color: #00ff00; } .basse { color: #4488ff; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border: 1px solid #444; padding: 10px; text-align: left; }
-        th { background-color: #2d2d2d; color: #00bcd4; }
+        :root {
+            --bg-dark: #0d1117;
+            --bg-card: #161b22;
+            --bg-sidebar: rgba(22, 27, 34, 0.95);
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-orange: #d29922;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --border-color: #30363d;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            background-color: var(--bg-dark); 
+            color: var(--text-main); 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; 
+            display: flex; 
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar Glassmorphism */
+        .sidebar { 
+            width: 250px; 
+            background: var(--bg-sidebar); 
+            backdrop-filter: blur(10px);
+            border-right: 1px solid var(--border-color); 
+            padding: 30px 0; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        .logo { 
+            padding: 0 20px 30px 20px; 
+            border-bottom: 1px solid var(--border-color); 
+            margin-bottom: 20px; 
+        }
+        .logo h1 { font-size: 20px; color: var(--accent-blue); letter-spacing: 1px; }
+        .logo p { font-size: 11px; color: var(--text-dim); margin-top: 5px; text-transform: uppercase; letter-spacing: 2px; }
+        
+        .nav-link { 
+            display: flex; 
+            align-items: center; 
+            padding: 12px 25px; 
+            color: var(--text-dim); 
+            text-decoration: none; 
+            transition: all 0.2s ease; 
+            border-left: 3px solid transparent; 
+            font-size: 14px;
+        }
+        .nav-link:hover { color: var(--text-main); background: rgba(88, 166, 255, 0.05); border-left-color: var(--text-dim); }
+        .nav-link.active { color: var(--accent-blue); background: rgba(88, 166, 255, 0.1); border-left-color: var(--accent-blue); font-weight: 600; }
+
+        /* Main Content */
+        .content { flex: 1; padding: 40px 50px; }
+        .header { margin-bottom: 30px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+        .header h1 { font-size: 24px; font-weight: 600; color: var(--text-main); }
+        .header p { color: var(--text-dim); font-size: 14px; margin-top: 5px; }
+
+        /* Cards & Inputs */
+        .card { background-color: var(--bg-card); padding: 25px; border: 1px solid var(--border-color); border-radius: 8px; margin-bottom: 25px; }
+        input[type="text"], input[type="file"] { 
+            background: var(--bg-dark); 
+            border: 1px solid var(--border-color); 
+            color: var(--text-main); 
+            padding: 10px 15px; 
+            border-radius: 6px; 
+            width: 70%; 
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        input[type="text"]:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2); }
+        input[type="file"] { padding: 8px; }
+        
+        .btn { 
+            background: linear-gradient(135deg, var(--accent-blue), #388bfd); 
+            color: #fff; 
+            border: none; 
+            padding: 10px 25px; 
+            border-radius: 6px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            font-size: 14px;
+            transition: transform 0.1s, box-shadow 0.2s;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(88, 166, 255, 0.3); }
+        .btn:active { transform: translateY(0); }
+
+        /* Results Display (Terminal Look but clean) */
+        .result-box { 
+            background: #010409; 
+            border: 1px solid var(--border-color); 
+            border-radius: 8px; 
+            padding: 20px; 
+            font-family: 'Fira Code', 'Courier New', monospace; 
+            font-size: 13px; 
+            line-height: 1.6; 
+            margin-top: 20px; 
+            white-space: pre-wrap; 
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { color: var(--text-dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+        td { color: var(--text-main); }
+        tr:hover { background-color: rgba(88, 166, 255, 0.05); }
+
+        /* Status Badges */
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .badge-success { background: rgba(63, 185, 80, 0.15); color: var(--accent-green); }
+        .badge-danger { background: rgba(248, 81, 73, 0.15); color: var(--accent-red); }
+        .badge-warning { background: rgba(210, 153, 34, 0.15); color: var(--accent-orange); }
+        
+        /* Override text colors in results */
+        .haute { color: var(--accent-red); font-weight: bold; }
+        .moyenne { color: var(--accent-orange); font-weight: bold; }
+        .basse { color: var(--accent-blue); }
+        .ok { color: var(--accent-green); }
+
     </style>
 </head>
 <body>
+
     <div class="sidebar">
-        <h2>⚡ PySecOps</h2>
-        <a href="/" class="{{ 'active' if active == 'home' else '' }}">🏠 Accueil</a>
-        <a href="/ports" class="{{ 'active' if active == 'ports' else '' }}>📡 Scan Ports (Top 30)</a>
-        <a href="/logs" class="{{ 'active' if active == 'logs' else '' }}">📋 Analyse Logs</a>
-        <a href="/secops" class="{{ 'active' if active == 'secops' else '' }}">🔐 SecOps (Mdp/Hash)</a>
-        <a href="/owasp" class="{{ 'active' if active == 'owasp' else '' }}">🛡️ Scan OWASP Web</a>
+        <div class="logo">
+            <h1>PYSECOPS</h1>
+            <p>Security Dashboard</p>
+        </div>
+        <a href="/" class="nav-link {{ 'active' if active == 'home' else '' }}">Overview</a>
+        <a href="/ports" class="nav-link {{ 'active' if active == 'ports' else '' }}">Port Scanner</a>
+        <a href="/logs" class="nav-link {{ 'active' if active == 'logs' else '' }}">Log Analyzer</a>
+        <a href="/secops" class="nav-link {{ 'active' if active == 'secops' else '' }}">Crypto & SecOps</a>
+        <a href="/owasp" class="nav-link {{ 'active' if active == 'owasp' else '' }}">Web Audit (OWASP)</a>
+        
+        <div style="margin-top: auto; padding: 20px; border-top: 1px solid var(--border-color);">
+            <p style="font-size: 11px; color: var(--text-dim);">Developed by</p>
+            <p style="font-size: 13px; color: var(--accent-blue);">Hyacinthe</p>
+        </div>
     </div>
+
     <div class="content">
-        <h1>{{ titre }}</h1>
+        <div class="header">
+            <h1>{{ titre }}</h1>
+            <p>{{ soustitre }}</p>
+        </div>
         <div class="card">{{ contenu|safe }}</div>
     </div>
+
 </body>
 </html>
 """
 
-# --- ROUTE 1 : ACCUEIL ---
+# --- ROUTES ---
+
 @app.route('/')
 def home():
-    return render_template_string(LAYOUT_HTML, active="home", titre="Tableau de bord PySecOps", contenu="<p style='color:#aaa'>Bienvenue sur PySecOps Cloud. Sélectionnez un module dans le menu de gauche.<br><br><span style='color:#ff00ff'>by hyacinthe</span></p>")
+    return render_template_string(LAYOUT_HTML, active="home", titre="Tableau de bord", soustitre="Vue d'ensemble de l'infrastructure", contenu="<p style='color: var(--text-dim)'>Bienvenue sur PySecOps Cloud. Sélectionnez un module dans le menu latéral pour commencer votre audit.</p>")
 
-# --- ROUTE 2 : SCAN DE PORTS (TOP 30) ---
 @app.route('/ports', methods=['GET', 'POST'])
 def ports():
-    contenu = """<form method="POST"><input type="text" name="ip" placeholder="Adresse IP (ex: 127.0.0.1)" required> <button type="submit">Scanner</button></form>"""
+    contenu = """<form method="POST" style="display: flex; gap: 10px;"><input type="text" name="ip" placeholder="Adresse IP cible (ex: 127.0.0.1)" required style="flex:1; max-width: 400px;"> <button type="submit" class="btn">Launch Scan</button></form>"""
     if request.method == 'POST':
         ip = request.form['ip']
-        top_ports = [21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5900, 8080, 8443]
-        resultat = f"[*] Scan des 30 ports les plus ciblés sur {ip}...\n"
+        top_ports = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445, 993, 995, 1723, 3306, 3389, 5900, 8080, 8443]
+        resultat = f"[*] Initializing scan on target {ip}...\n"
+        resultat += f"[*] Checking top 30 common ports...\n\n"
         ouverts = 0
         for port in top_ports:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(0.5)
             if s.connect_ex((ip, port)) == 0:
-                resultat += f"<span class='haute'>[+] Port {port}/tcp : OUVERT</span>\n"
+                resultat += f"[+] <span class='haute'>PORT {port}/tcp : OPEN</span>\n"
                 ouverts += 1
             s.close()
-        resultat += f"\n[*] Scan terminé. {ouverts} port(s) ouvert(s) trouvé(s)."
+        resultat += f"\n[*] Scan completed. <span class='ok'>{ouverts} open port(s)</span> found."
         contenu += f"<div class='result-box'>{resultat}</div>"
-    return render_template_string(LAYOUT_HTML, active="ports", titre="Scanner de Ports", contenu=contenu)
+    return render_template_string(LAYOUT_HTML, active="ports", titre="Port Scanner", soustitre="Analyse des ports réseau (Top 30)", contenu=contenu)
 
-# --- ROUTE 3 : ANALYSE DE LOGS ---
 @app.route('/logs', methods=['GET', 'POST'])
 def logs():
-    contenu = """<form method="POST" enctype="multipart/form-data"><input type="file" name="logfile" accept=".log,.txt" required> <button type="submit">Analyser</button></form>"""
+    contenu = """<form method="POST" enctype="multipart/form-data" style="display: flex; gap: 10px; align-items: center;"><input type="file" name="logfile" accept=".log,.txt" required> <button type="submit" class="btn">Analyze</button></form>"""
     if request.method == 'POST':
         file = request.files['logfile']
         if file.filename != '':
             texte = file.read().decode('utf-8', errors='ignore')
             ips = re.findall(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', texte)
             mots_suspects = ["404", "401", "403", "admin", "passwd", "../"]
-            
             stats = {}
             for ip in ips:
                 if ip in stats: stats[ip] += 1
                 else: stats[ip] = 1
-                
             top_ips = sorted(stats.items(), key=lambda x: x[1], reverse=True)[:5]
             
-            tableau = "<table><tr><th>Adresse IP</th><th>Requêtes</th><th>Alertes</th><th>Statut</th></tr>"
+            tableau = "<table><tr><th>IP Address</th><th>Requests</th><th>Threat Level</th><th>Status</th></tr>"
             for ip, total in top_ips:
                 alertes = sum(1 for mot in mots_suspects if mot in texte)
-                statut = "<span class='haute'>DANGEREUX</span>" if alertes > 5 else "<span class='moyenne'>SUSPECT</span>" if alertes > 0 else "<span class='ok'>NORMAL</span>"
+                if alertes > 5: statut = "<span class='badge badge-danger'>HIGH RISK</span>"
+                elif alertes > 0: statut = "<span class='badge badge-warning'>SUSPICIOUS</span>"
+                else: statut = "<span class='badge badge-success'>CLEAN</span>"
                 tableau += f"<tr><td>{ip}</td><td>{total}</td><td>{alertes}</td><td>{statut}</td></tr>"
             tableau += "</table>"
             contenu += tableau
-    return render_template_string(LAYOUT_HTML, active="logs", titre="Analyseur de Logs (Forensic)", contenu=contenu)
+    return render_template_string(LAYOUT_HTML, active="logs", titre="Log Analyzer", soustitre="Détection d'intrusions via les logs (Forensic)", contenu=contenu)
 
-# --- ROUTE 4 : SECOPS (MOTS DE PASSE / HASH) ---
 @app.route('/secops', methods=['GET', 'POST'])
 def secops():
     contenu = """
-    <form method="POST">
-        <input type="text" name="action_mdp" placeholder="Tape 'gen' pour générer ou 'test' pour vérifier"> 
-        <input type="text" name="valeur" placeholder="Mot de passe (si test)">
-        <button type="submit">Exécuter</button>
-    </form>
-    <h3>Hachage SHA-256</h3>
-    <form method="POST" action="/secops/hash">
-        <input type="text" name="texte_hash" placeholder="Texte à hacher"> <button type="submit">Hacher</button>
+    <h3 style="margin-bottom:15px; color:var(--text-dim);">PASSWORD & HASH TOOLS</h3>
+    <form method="POST" style="display: flex; gap: 10px; margin-bottom: 30px;">
+        <input type="text" name="action_mdp" placeholder="'gen' pour générer, 'test' pour vérifier" style="flex:1; max-width: 300px;"> 
+        <input type="text" name="valeur" placeholder="Mot de passe (si test)" style="flex:1; max-width: 300px;">
+        <button type="submit" class="btn">Exec</button>
     </form>
     """
     if request.method == 'POST':
@@ -126,44 +243,35 @@ def secops():
         if action == 'gen':
             alphabet = string.ascii_letters + string.digits + string.punctuation
             mdp = ''.join(secrets.choice(alphabet) for _ in range(16))
-            contenu += f"<div class='result-box'>[+] Mot de passe sécurisé : <span class='ok'>{mdp}</span></div>"
+            contenu += f"<div class='result-box'>[+] Secure Password Generated : <span class='ok'>{mdp}</span></div>"
         elif action == 'test' and valeur:
             score = sum([len(valeur)>=8, len(valeur)>=12, bool(re.search(r"[A-Z]", valeur)), bool(re.search(r"[a-z]", valeur)), bool(re.search(r"\d", valeur)), bool(re.search(r"[!@#$%^&*(),.?\":{}|<>]", valeur))])
-            etat = "<span class='haute'>FAIBLE</span>" if score <= 2 else "<span class='moyenne'>MOYEN</span>" if score <= 4 else "<span class='ok'>FORT</span>"
-            contenu += f"<div class='result-box'>[*] Score : {score}/6 - Statut : {etat}</div>"
-    return render_template_string(LAYOUT_HTML, active="secops", titre="Outils SecOps", contenu=contenu)
+            if score <= 2: etat = "<span class='badge badge-danger'>WEAK</span>"
+            elif score <= 4: etat = "<span class='badge badge-warning'>MEDIUM</span>"
+            else: etat = "<span class='badge badge-success'>STRONG</span>"
+            contenu += f"<div class='result-box'>[*] Security Score : {score}/6 <br>[+] Status : {etat}</div>"
+    return render_template_string(LAYOUT_HTML, active="secops", titre="SecOps Tools", soustitre="Génération cryptographique et tests de robustesse", contenu=contenu)
 
-@app.route('/secops/hash', methods=['POST'])
-def secops_hash():
-    texte = request.form.get('texte_hash', '')
-    if texte:
-        hash_hex = hashlib.sha256(texte.encode('utf-8')).hexdigest()
-        resultat = f"[+] Texte : {texte}\n[+] Hash SHA-256 : <span class='ok'>{hash_hex}</span>"
-    else:
-        resultat = "[-] Aucun texte fourni."
-    return render_template_string(LAYOUT_HTML, active="secops", titre="Outils SecOps", contenu=f"<div class='result-box'>{resultat}</div><br><a href='/secops'>Retour</a>")
-
-# --- ROUTE 5 : OWASP WEB SCAN ---
 @app.route('/owasp', methods=['GET', 'POST'])
 def owasp():
-    contenu = """<form method="POST"><input type="text" name="url" placeholder="URL cible (ex: http://testphp.vulnweb.com)" required> <button type="submit">Audit OWASP</button></form>"""
+    contenu = """<form method="POST" style="display: flex; gap: 10px;"><input type="text" name="url" placeholder="Target URL (ex: http://testphp.vulnweb.com)" required style="flex:1; max-width: 500px;"> <button type="submit" class="btn">Audit OWASP</button></form>"""
     if request.method == 'POST':
         url = request.form['url']
         if not url.startswith("http"): url = "http://" + url
         try:
             r = requests.get(url, timeout=8, verify=False)
             h = r.headers
-            rapport = f"[*] Cible : {url}\n"
-            rapport += f"[*] Serveur exposé : {'<span class=\"haute\">' + h.get('Server', 'Masqué') + '</span>' if h.get('Server') else '<span class=\"ok\">Masqué</span>'}\n"
-            rapport += f"[*] Clickjacking (X-Frame) : {'<span class=\"moyenne\">MANQUANT</span>' if not h.get('X-Frame-Options') else '<span class=\"ok\">OK</span>'}\n"
-            rapport += f"[*] Techno exposée (X-Powered-By) : {'<span class=\"haute\">' + h.get('X-Powered-By') + '</span>' if h.get('X-Powered-By') else '<span class=\"ok\">Masquée</span>'}\n"
-            rapport += f"[*] Couche transport (HSTS) : {'<span class=\"haute\">MANQUANT</span>' if not h.get('Strict-Transport-Security') else '<span class=\"ok\">OK</span>'}\n"
-            rapport += f"[*] Protection XSS : {'<span class=\"basse\">OBSOLETE</span>' if not h.get('X-XSS-Protection') else '<span class=\"ok\">OK</span>'}\n"
-            rapport += f"[*] Policy (CSP) : {'<span class=\"haute\">MANQUANT (Risque XSS élevé)</span>' if not h.get('Content-Security-Policy') else '<span class=\"ok\">OK</span>'}\n"
+            rapport = f"[*] Target : {url}\n"
+            rapport += f"[*] Server Disclosure : {'<span class=\"haute\">EXPOSED - ' + h.get('Server', '') + '</span>' if h.get('Server') else '<span class=\"ok\">MASKED</span>'}\n"
+            rapport += f"[*] Clickjacking (X-Frame) : {'<span class=\"moyenne\">MISSING</span>' if not h.get('X-Frame-Options') else '<span class=\"ok\">SECURED</span>'}\n"
+            rapport += f"[*] Tech Stack (X-Powered-By) : {'<span class=\"haute\">EXPOSED - ' + h.get('X-Powered-By') + '</span>' if h.get('X-Powered-By') else '<span class=\"ok\">MASKED</span>'}\n"
+            rapport += f"[*] Transport Layer (HSTS) : {'<span class=\"haute\">MISSING</span>' if not h.get('Strict-Transport-Security') else '<span class=\"ok\">SECURED</span>'}\n"
+            rapport += f"[*] XSS Protection : {'<span class=\"basse\">OBSOLETE</span>' if not h.get('X-XSS-Protection') else '<span class=\"ok\">SECURED</span>'}\n"
+            rapport += f"[*] Content Security Policy : {'<span class=\"haute\">MISSING (High Risk)</span>' if not h.get('Content-Security-Policy') else '<span class=\"ok\">SECURED</span>'}\n"
             contenu += f"<div class='result-box'>{rapport}</div>"
         except Exception as e:
-            contenu += f"<div class='result-box'><span class='haute'>Erreur : {e}</span></div>"
-    return render_template_string(LAYOUT_HTML, active="owasp", titre="Scan OWASP Web", contenu=contenu)
+            contenu += f"<div class='result-box'><span class='haute'>Error : {e}</span></div>"
+    return render_template_string(LAYOUT_HTML, active="owasp", titre="Web Vulnerability Scanner", soustitre="Audit OWASP Top 10 des en-têtes HTTP", contenu=contenu)
 
 if __name__ == '__main__':
     app.run(debug=True, port=8080, host='0.0.0.0')
