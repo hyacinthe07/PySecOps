@@ -1,0 +1,73 @@
+{% extends "layout.html" %}
+{% block titre %}Crypto & SecOps{% endblock %}
+{% block page_titre %}Crypto & SecOps{% endblock %}
+{% block page_sous %}Générateur de mots de passe, hachage, force, encodage Base64{% endblock %}
+{% block contenu %}
+
+<div class="card">
+  <div class="card-title">Générateur de mot de passe</div>
+  <form method="POST" class="form-row">
+    <input type="hidden" name="action" value="generer">
+    <input type="number" name="longueur" value="16" min="8" max="64">
+    <button type="submit" class="btn">🔑 Générer</button>
+  </form>
+  {% if action_active=='generer' and resultat %}
+    {% if resultat.erreur %}<div class="alert-err">{{ resultat.erreur }}</div>
+    {% else %}<div class="result-box">{{ resultat.mdp }}</div>{% endif %}
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-title">Hacher un texte (MD5 / SHA1 / SHA256)</div>
+  <form method="POST" class="form-row">
+    <input type="hidden" name="action" value="hash">
+    <input type="text" name="texte_hash" placeholder="Texte à hacher..." style="width:350px">
+    <button type="submit" class="btn">🔒 Hacher</button>
+  </form>
+  {% if action_active=='hash' and resultat %}
+    {% if resultat.erreur %}<div class="alert-err">{{ resultat.erreur }}</div>
+    {% else %}<div class="result-box">MD5    : {{ resultat.md5 }}
+SHA1   : {{ resultat.sha1 }}
+SHA256 : {{ resultat.sha256 }}</div>{% endif %}
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-title">Vérifier la force d'un mot de passe</div>
+  <form method="POST" class="form-row">
+    <input type="hidden" name="action" value="force">
+    <input type="text" name="mdp_test" placeholder="Mot de passe à tester...">
+    <button type="submit" class="btn">🛡 Analyser</button>
+  </form>
+  {% if action_active=='force' and resultat %}
+    {% if resultat.erreur %}<div class="alert-err">{{ resultat.erreur }}</div>
+    {% else %}
+    <p style="margin-top:14px">Score : <strong>{{ resultat.score }}/{{ resultat.max }}</strong>
+      <span class="badge {% if resultat.niveau=='FORT' %}ok{% elif resultat.niveau=='MOYEN' %}warn{% else %}danger{% endif %}">{{ resultat.niveau }}</span>
+    </p>
+    <div class="bar-wrap"><div class="bar {{ resultat.niveau|lower }}" style="width:{{ (resultat.score/resultat.max*100)|int }}%"></div></div>
+    <ul class="crit-list">
+      {% for nom, ok in resultat.criteres.items() %}
+      <li><span class="{% if ok %}crit-ok{% else %}crit-ko{% endif %}">{% if ok %}✔{% else %}✘{% endif %}</span> {{ nom }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-title">Encodeur / Décodeur Base64</div>
+  <form method="POST">
+    <input type="hidden" name="action" value="base64">
+    <div class="form-row" style="margin-bottom:10px">
+      <select name="sens_b64"><option value="encode">Encoder</option><option value="decode">Décoder</option></select>
+      <button type="submit" class="btn">⇄ Convertir</button>
+    </div>
+    <textarea name="texte_b64" placeholder="Entrez votre texte ici..." style="width:100%;min-height:70px;background:#010409;border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;font-family:monospace;font-size:13px"></textarea>
+  </form>
+  {% if action_active=='base64' and resultat %}
+    {% if resultat.erreur %}<div class="alert-err">{{ resultat.erreur }}</div>
+    {% else %}<div class="result-box">{{ resultat.resultat }}</div>{% endif %}
+  {% endif %}
+</div>
+{% endblock %}

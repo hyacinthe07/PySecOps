@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+{% block titre %}Web Audit OWASP{% endblock %}
+{% block page_titre %}Web Vulnerability Scanner{% endblock %}
+{% block page_sous %}Audit complet de 12 headers HTTP de sécurité (OWASP Top 10){% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Cible à auditer</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="url" placeholder="https://example.com" style="width:420px">
+    <button type="submit" class="btn">🔎 Lancer l'audit</button>
+  </form>
+  {% if erreur %}<div class="alert-err">⚠ {{ erreur }}</div>{% endif %}
+</div>
+
+{% if audit %}
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-val" style="color:var(--red)">{{ audit.stats.haute }}</div><div class="stat-lbl">Hautes</div></div>
+  <div class="stat-card"><div class="stat-val" style="color:var(--orange)">{{ audit.stats.moyenne }}</div><div class="stat-lbl">Moyennes</div></div>
+  <div class="stat-card"><div class="stat-val" style="color:var(--blue)">{{ audit.stats.basse }}</div><div class="stat-lbl">Basses</div></div>
+  <div class="stat-card"><div class="stat-val" style="color:var(--green)">{{ audit.stats.ok }}</div><div class="stat-lbl">OK</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Résultats — <span style="color:var(--blue)">{{ audit.url }}</span> (HTTP {{ audit.status }})</div>
+  {% for c in audit.resultats %}
+  <div class="check-row">
+    <div>
+      <div class="check-nom">{{ c.nom }}</div>
+      {% if c.conseil %}<div class="check-conseil">💡 {{ c.conseil }}</div>{% endif %}
+      <code style="font-size:11px;color:var(--dim)">{{ c.valeur }}</code>
+    </div>
+    <div>
+      {% if c.statut == 'VULNÉRABLE' %}
+        <span class="badge {% if c.severite=='HAUTE' %}danger{% elif c.severite=='MOYENNE' %}warn{% else %}info{% endif %}">{{ c.severite }}</span>
+        <span class="badge danger" style="font-size:10px;margin-left:4px">VULNÉRABLE</span>
+      {% else %}
+        <span class="badge ok">✔ OK</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

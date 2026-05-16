@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block titre %}Overview{% endblock %}
+{% block page_titre %}Tableau de bord{% endblock %}
+{% block page_sous %}Vue d'ensemble de la plateforme PySecOps v2{% endblock %}
+{% block contenu %}
+<div class="stats-grid">
+  <div class="stat-card"><div class="stat-val">{{ stats.modules }}</div><div class="stat-lbl">Modules actifs</div></div>
+  <div class="stat-card"><div class="stat-val" style="color:var(--green)">v{{ stats.version }}</div><div class="stat-lbl">Version</div></div>
+  <div class="stat-card"><div class="stat-val" style="color:var(--green)">●</div><div class="stat-lbl">{{ stats.status }}</div></div>
+</div>
+<div class="card">
+  <div class="card-title">Modules disponibles</div>
+  <table>
+    <tr><th>Module</th><th>Description</th><th>Statut</th></tr>
+    <tr><td><a href="/ports"  class="lien">Port Scanner</a></td><td>Scan TCP multithreadé — 1024 ports</td><td><span class="badge ok">ACTIF</span></td></tr>
+    <tr><td><a href="/logs"   class="lien">Log Analyzer</a></td><td>Détection d'IPs suspectes dans vos logs</td><td><span class="badge ok">ACTIF</span></td></tr>
+    <tr><td><a href="/secops" class="lien">Crypto & SecOps</a></td><td>Mots de passe, hash, Base64</td><td><span class="badge ok">ACTIF</span></td></tr>
+    <tr><td><a href="/owasp"  class="lien">Web Audit OWASP</a></td><td>12 vérifications de headers HTTP</td><td><span class="badge ok">ACTIF</span></td></tr>
+    <tr><td>WHOIS & DNS</td><td>Lookup WHOIS + enregistrements DNS</td><td><span class="badge warn">BIENTÔT</span></td></tr>
+  </table>
+</div>
+{% endblock %}

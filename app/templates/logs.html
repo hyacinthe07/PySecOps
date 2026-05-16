@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block titre %}Log Analyzer{% endblock %}
+{% block page_titre %}Log Analyzer{% endblock %}
+{% block page_sous %}Détection d'intrusions et d'IPs suspectes dans vos fichiers de logs{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Importer un fichier log</div>
+  <form method="POST" enctype="multipart/form-data" class="form-row">
+    <input type="file" name="logfile" accept=".log,.txt" required>
+    <button type="submit" class="btn">🔍 Analyser</button>
+  </form>
+  {% if erreur %}<div class="alert-err">⚠ {{ erreur }}</div>{% endif %}
+  {% if analyse %}
+  <div class="meta-row">
+    <span>Lignes : <strong>{{ analyse.total_lignes }}</strong></span>
+    <span>IPs uniques : <strong class="hl">{{ analyse.total_ips }}</strong></span>
+    <span>Requêtes totales : <strong>{{ analyse.total_requetes }}</strong></span>
+  </div>
+  <table>
+    <tr><th>Adresse IP</th><th>Requêtes</th><th>Critique</th><th>Élevé</th><th>Statut</th></tr>
+    {% for r in analyse.resultats %}
+    <tr>
+      <td><strong>{{ r.ip }}</strong></td>
+      <td>{{ r.total }}</td>
+      <td style="color:var(--red)">{{ r.critique }}</td>
+      <td style="color:var(--orange)">{{ r.elevated }}</td>
+      <td>
+        {% if r.statut == 'CRITIQUE' %}<span class="badge danger">CRITIQUE</span>
+        {% elif r.statut == 'ÉLEVÉ' %}<span class="badge warn">ÉLEVÉ</span>
+        {% elif r.statut == 'SUSPECT' %}<span class="badge info">SUSPECT</span>
+        {% else %}<span class="badge ok">NORMAL</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

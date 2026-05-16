@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% block titre %}Port Scanner{% endblock %}
+{% block page_titre %}Port Scanner{% endblock %}
+{% block page_sous %}Scan TCP multithreadé — jusqu'à 1024 ports en parallèle{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Paramètres</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="ip" placeholder="IP ou domaine (ex: 192.168.1.1)" required>
+    <select name="port_range">
+      <option value="1024">Top 1024 ports</option>
+      <option value="500">500 ports</option>
+      <option value="100">Top 100 ports</option>
+    </select>
+    <button type="submit" class="btn">⚡ Scanner</button>
+  </form>
+  {% if erreur %}<div class="alert-err">⚠ {{ erreur }}</div>{% endif %}
+  {% if resultats %}
+  <div class="meta-row">
+    <span>Cible : <strong class="hl">{{ resultats.target }}</strong></span>
+    <span>Ports scannés : <strong>{{ resultats.range }}</strong></span>
+    <span>Ouverts : <strong class="hl-green">{{ resultats.total }}</strong></span>
+  </div>
+  {% if resultats.ports %}
+  <table>
+    <tr><th>Port</th><th>Protocole</th><th>Service</th><th>Statut</th></tr>
+    {% for p in resultats.ports %}
+    <tr>
+      <td><strong>{{ p.port }}</strong></td>
+      <td>TCP</td>
+      <td>{{ p.service }}</td>
+      <td><span class="badge ok">OUVERT</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="dim" style="margin-top:16px">Aucun port ouvert détecté.</p>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}
