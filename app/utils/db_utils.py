@@ -29,7 +29,6 @@ def init_db():
                 date      TEXT    NOT NULL,
                 heure     TEXT    NOT NULL
             );
-
             CREATE TABLE IF NOT EXISTS compteurs (
                 module    TEXT PRIMARY KEY,
                 total     INTEGER DEFAULT 0
@@ -60,32 +59,31 @@ def get_stats() -> dict:
     """Retourne les statistiques globales depuis la base."""
     with _lock:
         conn = _connexion()
-
-        # Compteurs par module
         rows = conn.execute("SELECT module, total FROM compteurs").fetchall()
         compteurs = {r["module"]: r["total"] for r in rows}
-
-        # Total global
         total = sum(compteurs.values())
-
-        # Dernières activités
         activites = conn.execute(
             "SELECT module, detail, date, heure FROM analyses ORDER BY id DESC LIMIT 15"
         ).fetchall()
-
         conn.close()
 
     return {
-        "total":    total,
-        "ports":    compteurs.get("ports",    0),
-        "owasp":    compteurs.get("owasp",    0),
-        "logs":     compteurs.get("logs",     0),
-        "secops":   compteurs.get("secops",   0),
-        "whois":    compteurs.get("whois",    0),
-        "ip_intel": compteurs.get("ip_intel", 0),
-        "ssl":      compteurs.get("ssl",      0),
-        "qrcode":   compteurs.get("qrcode",   0),
-        "modules":  11,
-        "version":  "2.0",
-        "activites": [dict(a) for a in activites],
+        "total":      total,
+        "ports":      compteurs.get("ports",      0),
+        "owasp":      compteurs.get("owasp",      0),
+        "logs":       compteurs.get("logs",       0),
+        "secops":     compteurs.get("secops",     0),
+        "whois":      compteurs.get("whois",      0),
+        "ip_intel":   compteurs.get("ip_intel",   0),
+        "ssl":        compteurs.get("ssl",        0),
+        "qrcode":     compteurs.get("qrcode",     0),
+        "recon_scan": compteurs.get("recon_scan", 0),
+        "recon_sub":  compteurs.get("recon_sub",  0),
+        "recon_cve":  compteurs.get("recon_cve",  0),
+        "ids":        compteurs.get("ids",        0),
+        "audit":      compteurs.get("audit",      0),
+        "assistant":  compteurs.get("assistant",  0),
+        "modules":    14,
+        "version":    "2.0",
+        "activites":  [dict(a) for a in activites],
     }

@@ -205,3 +205,14 @@ tr:hover td{background:rgba(88,166,255,.04)}
   background: var(--border);
   border-radius: 2px;
 }
+
+/* ─── SIDEBAR HAUTEUR FIXE + SCROLL ─── */
+.sidebar {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  position: fixed;
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.sidebar::-webkit-scrollbar-track { background: transparent; }
