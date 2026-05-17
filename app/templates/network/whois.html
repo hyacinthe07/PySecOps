@@ -1,0 +1,240 @@
+{% extends "layout.html" %}
+{% block titre %}WHOIS & DNS{% endblock %}
+{% block page_titre %}🌐 WHOIS & DNS Lookup{% endblock %}
+{% block page_sous %}Informations WHOIS et enregistrements DNS complets d'un domaine{% endblock %}
+{% block contenu %}
+
+<div class="card">
+  <div class="card-title">Domaine à analyser</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="domaine"
+           placeholder="exemple.com"
+           style="width:380px" required>
+    <button type="submit" class="btn">🌐 Analyser</button>
+  </form>
+
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:14px">
+    ⚠ {{ erreur }}
+  </div>
+  {% endif %}
+</div>
+
+{% if whois_data and not whois_data.erreur %}
+
+{# ── WHOIS ── #}
+<div class="card">
+  <div class="card-title">
+    📋 Informations WHOIS — {{ whois_data.domaine }}
+  </div>
+
+  <div class="detect-body">
+    <div class="detect-row">
+      <span class="dim">Registrant</span>
+      <strong>{{ whois_data.registrant }}</strong>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Organisation</span>
+      <span>{{ whois_data.organisation }}</span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Pays</span>
+      <span>{{ whois_data.pays }}</span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Registrar</span>
+      <span>{{ whois_data.registrar }}</span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Email contact</span>
+      <span>{{ whois_data.email }}</span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Création</span>
+      <span>{{ whois_data.creation }}</span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Expiration</span>
+
+      <span style="color:
+      {% if whois_data.jours_exp is not none and whois_data.jours_exp < 30 %}
+        var(--red)
+      {% elif whois_data.jours_exp is not none and whois_data.jours_exp < 60 %}
+        var(--orange)
+      {% else %}
+        var(--text)
+      {% endif %}
+      ">
+        {{ whois_data.expiration }}
+
+        {% if whois_data.jours_exp is not none %}
+        <span class="dim">
+          ({{ whois_data.jours_exp }}j restants)
+        </span>
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Dernière MAJ</span>
+      <span>{{ whois_data.updated }}</span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">DNSSEC</span>
+      <span>{{ whois_data.dnssec }}</span>
+    </div>
+  </div>
+</div>
+
+{# Nameservers #}
+{% if whois_data.nameservers %}
+<div class="card">
+  <div class="card-title">🖧 Serveurs de noms (NS)</div>
+
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+    {% for ns in whois_data.nameservers %}
+    <code style="background:var(--bg);border:1px solid var(--border);padding:4px 12px;border-radius:4px;font-size:12px">
+      {{ ns }}
+    </code>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# Statuts #}
+{% if whois_data.statuts %}
+<div class="card">
+  <div class="card-title">📌 Statuts du domaine</div>
+
+  <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+    {% for s in whois_data.statuts %}
+    <code style="font-size:12px;color:var(--blue)">
+      {{ s }}
+    </code>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# Alertes WHOIS #}
+{% if whois_data.alertes %}
+<div class="card">
+  <div class="card-title">⚠ Alertes WHOIS</div>
+
+  {% for a in whois_data.alertes %}
+  <div class="check-row">
+    <div class="check-nom">
+      {{ a.msg }}
+    </div>
+
+    <span class="badge
+      {% if a.type == 'CRITIQUE' %}
+        danger
+      {% elif a.type == 'HAUTE' %}
+        danger
+      {% elif a.type == 'MOYENNE' %}
+        warn
+      {% else %}
+        info
+      {% endif %}
+    ">
+      {{ a.type }}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+
+{# ── DNS ── #}
+{% if dns_data and not dns_data.erreur %}
+<div class="card">
+
+  <div class="card-title">
+    🔍 Enregistrements DNS — {{ dns_data.domaine }}
+
+    <span class="dim"
+          style="font-weight:normal;font-size:12px;margin-left:8px">
+      {{ dns_data.total }} enregistrement(s)
+    </span>
+
+    {% if dns_data.has_spf %}
+      <span class="badge ok" style="margin-left:8px">SPF ✔</span>
+    {% else %}
+      <span class="badge danger" style="margin-left:8px">SPF ✘</span>
+    {% endif %}
+
+    {% if dns_data.has_dmarc %}
+      <span class="badge ok" style="margin-left:4px">DMARC ✔</span>
+    {% else %}
+      <span class="badge danger" style="margin-left:4px">DMARC ✘</span>
+    {% endif %}
+
+    {% if dns_data.has_ipv6 %}
+      <span class="badge info" style="margin-left:4px">IPv6 ✔</span>
+    {% endif %}
+  </div>
+
+  {% for rtype, valeurs in dns_data.enregistrements.items() %}
+    {% if valeurs %}
+
+    <div style="margin-bottom:14px">
+
+      <div style="font-size:11px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">
+        {{ rtype }}
+      </div>
+
+      {% for v in valeurs %}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+
+        <code style="font-size:12px;background:#010409;border:1px solid var(--border);padding:4px 10px;border-radius:4px;flex:1;word-break:break-all">
+          {{ v }}
+        </code>
+
+      </div>
+      {% endfor %}
+
+    </div>
+
+    {% endif %}
+  {% endfor %}
+</div>
+
+{# Alertes DNS #}
+{% if dns_data.alertes %}
+<div class="card">
+  <div class="card-title">⚠ Alertes DNS / Email Security</div>
+
+  {% for a in dns_data.alertes %}
+  <div class="check-row">
+
+    <div class="check-nom">
+      {{ a.msg }}
+    </div>
+
+    <span class="badge
+      {% if a.type == 'MOYENNE' %}
+        warn
+      {% elif a.type == 'INFO' %}
+        info
+      {% else %}
+        danger
+      {% endif %}
+    ">
+      {{ a.type }}
+    </span>
+
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}

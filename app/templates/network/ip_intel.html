@@ -1,0 +1,239 @@
+{% extends "layout.html" %}
+{% block titre %}IP Intelligence{% endblock %}
+{% block page_titre %}🌍 IP Intelligence{% endblock %}
+{% block page_sous %}Géolocalisation, informations ASN, réputation et indicateurs de risque d'une IP{% endblock %}
+{% block contenu %}
+
+<div class="card">
+  <div class="card-title">IP ou domaine à analyser</div>
+
+  <form method="POST" class="form-row">
+    <input type="text"
+           name="cible"
+           placeholder="8.8.8.8 ou exemple.com"
+           style="width:380px"
+           required>
+
+    <button type="submit" class="btn">
+      🌍 Analyser
+    </button>
+  </form>
+
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:14px">
+    ⚠ {{ erreur }}
+  </div>
+  {% endif %}
+</div>
+
+{% if resultat %}
+
+{# ───────── SCORE DE RISQUE ───────── #}
+<div class="result-panel {{ resultat.couleur }}" style="margin-top:4px">
+
+  <div class="result-header">
+    {% if resultat.couleur == 'green' %}
+      ✅
+    {% else %}
+      ⚠
+    {% endif %}
+
+    <span>{{ resultat.niveau_risque }}</span>
+
+    <span style="font-size:22px;font-weight:700;margin-left:auto">
+      {{ resultat.score_risque }}/100
+    </span>
+  </div>
+
+  <div class="bar-wrap" style="margin-top:10px">
+    <div class="bar {{ 'fort' if resultat.couleur == 'green' else 'moyen' }}"
+         style="width:{{ [resultat.score_risque, 5]|max }}%">
+    </div>
+  </div>
+
+  <div class="stats-row" style="margin-top:14px">
+
+    <div class="mini-stat">
+      <div class="dim">IP analysée</div>
+      <strong>{{ resultat.ip }}</strong>
+    </div>
+
+    {% if resultat.est_domaine %}
+    <div class="mini-stat">
+      <div class="dim">Domaine</div>
+      <strong>{{ resultat.cible }}</strong>
+    </div>
+    {% endif %}
+
+    <div class="mini-stat">
+      <div class="dim">Proxy / VPN</div>
+
+      <span class="badge {% if resultat.est_proxy %}danger{% else %}ok{% endif %}">
+        {% if resultat.est_proxy %}
+          OUI
+        {% else %}
+          NON
+        {% endif %}
+      </span>
+    </div>
+
+    <div class="mini-stat">
+      <div class="dim">Hébergeur</div>
+
+      <span class="badge {% if resultat.est_hosting %}warn{% else %}ok{% endif %}">
+        {% if resultat.est_hosting %}
+          OUI
+        {% else %}
+          NON
+        {% endif %}
+      </span>
+    </div>
+
+  </div>
+</div>
+
+{# ───────── LOCALISATION ───────── #}
+<div class="card" style="margin-top:16px">
+
+  <div class="card-title">
+    📍 Localisation géographique
+  </div>
+
+  <div class="detect-body">
+
+    <div class="detect-row">
+      <span class="dim">Pays</span>
+      <strong>{{ resultat.pays }} ({{ resultat.code_pays }})</strong>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Région</span>
+      <span>{{ resultat.region }}</span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Ville</span>
+      <span>{{ resultat.ville }}</span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Code postal</span>
+      <span>{{ resultat.cp }}</span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Fuseau horaire</span>
+      <span>{{ resultat.timezone }}</span>
+    </div>
+
+    {% if resultat.lat and resultat.lon %}
+    <div class="detect-row">
+      <span class="dim">Coordonnées GPS</span>
+
+      <a href="https://www.openstreetmap.org/?mlat={{ resultat.lat }}&mlon={{ resultat.lon }}&zoom=12"
+         target="_blank"
+         style="color:var(--blue);font-size:12px">
+
+         {{ resultat.lat }}, {{ resultat.lon }} → Voir sur la carte ↗
+      </a>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{# ───────── INFORMATIONS RÉSEAU ───────── #}
+<div class="card">
+
+  <div class="card-title">
+    🔌 Informations réseau / ASN
+  </div>
+
+  <div class="detect-body">
+
+    <div class="detect-row">
+      <span class="dim">FAI / ISP</span>
+      <strong>{{ resultat.isp }}</strong>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Organisation</span>
+      <span>{{ resultat.org }}</span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">ASN</span>
+      <code style="font-size:12px">{{ resultat.asn }}</code>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Nom ASN</span>
+      <span>{{ resultat.asname }}</span>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">DNS inverse (PTR)</span>
+      <code style="font-size:12px">{{ resultat.reverse_dns }}</code>
+    </div>
+
+    <div class="detect-row">
+      <span class="dim">Mobile</span>
+
+      <span class="badge {% if resultat.est_mobile %}info{% else %}ok{% endif %}">
+        {% if resultat.est_mobile %}
+          OUI
+        {% else %}
+          NON
+        {% endif %}
+      </span>
+    </div>
+
+  </div>
+</div>
+
+{# ───────── ALERTES ───────── #}
+{% if resultat.alertes %}
+<div class="card">
+
+  <div class="card-title">
+    ⚠ Indicateurs de risque
+  </div>
+
+  {% for a in resultat.alertes %}
+  <div class="check-row">
+
+    <div class="check-nom">
+      {{ a.msg }}
+    </div>
+
+    <span class="badge
+      {% if a.type == 'CRITIQUE' %}
+        danger
+      {% elif a.type == 'HAUTE' %}
+        danger
+      {% elif a.type == 'MOYENNE' %}
+        warn
+      {% else %}
+        info
+      {% endif %}
+    ">
+      {{ a.type }}
+    </span>
+
+  </div>
+  {% endfor %}
+
+</div>
+
+{% else %}
+
+<div class="card">
+  <p style="color:var(--green);font-size:13px">
+    ✅ Aucun indicateur de risque détecté pour cette IP.
+  </p>
+</div>
+
+{% endif %}
+
+{% endif %}
+{% endblock %}

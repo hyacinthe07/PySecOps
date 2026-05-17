@@ -92,3 +92,14 @@ tr:hover td{background:rgba(88,166,255,.04)}
 /* ─── STATS ROW ─── */
 .stats-row{display:flex;gap:20px;flex-wrap:wrap}
 .mini-stat{display:flex;flex-direction:column;gap:2px;font-size:13px}
+
+/* ─── NAV SECTION LABEL ─── */
+.nav-section {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  color: var(--dim);
+  padding: 16px 22px 6px;
+  opacity: .6;
+}
