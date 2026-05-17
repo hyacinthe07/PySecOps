@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template
-from app.utils.stats_utils import get_stats
+from app.utils.db_utils import get_stats
 
 home_bp = Blueprint('home', __name__)
 

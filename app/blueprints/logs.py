@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request
-from app.utils.stats_utils import incrementer
+from app.utils.db_utils import enregistrer as incrementer
 import re
 from collections import Counter
 

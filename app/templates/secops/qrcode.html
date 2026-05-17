@@ -1,0 +1,199 @@
+{% extends "layout.html" %}
+{% block titre %}QR Code{% endblock %}
+{% block page_titre %}▦ Générateur & Analyseur QR Code{% endblock %}
+{% block page_sous %}Créez des QR codes sécurisés et analysez leur contenu{% endblock %}
+
+{% block contenu %}
+
+{# ── ONGLETS ── #}
+<div class="tab-bar">
+  <button class="tab-btn {% if action != 'analyser' %}active{% endif %}"
+          onclick="basculerOnglet('generer')">⚡ Générer un QR</button>
+  <button class="tab-btn {% if action == 'analyser' %}active{% endif %}"
+          onclick="basculerOnglet('analyser')">🔍 Analyser un QR</button>
+</div>
+
+{# ── PANNEAU GÉNÉRATION ── #}
+<div id="panneau-generer" class="card"
+     style="{% if action == 'analyser' %}display:none{% endif %}">
+  <div class="card-title">Type de QR Code</div>
+  <form method="POST" id="form-generer">
+    <input type="hidden" name="action" value="generer">
+    <div class="form-row" style="margin-bottom:16px">
+      <select name="type_qr" id="type-qr" onchange="afficherChamps()" style="width:200px">
+        <option value="url">🌐 URL / Lien</option>
+        <option value="texte">📝 Texte libre</option>
+        <option value="wifi">📶 Réseau WiFi</option>
+        <option value="email">📧 Email</option>
+        <option value="tel">📞 Téléphone</option>
+        <option value="contact">👤 Contact (vCard)</option>
+      </select>
+      <button type="submit" class="btn">▦ Générer</button>
+    </div>
+
+    {# Champ URL #}
+    <div id="champ-url" class="champ-qr">
+      <input type="text" name="url" placeholder="https://exemple.com" style="width:450px">
+    </div>
+
+    {# Champ Texte #}
+    <div id="champ-texte" class="champ-qr" style="display:none">
+      <textarea name="texte" placeholder="Votre texte ici..."
+                style="width:100%;min-height:80px;background:#010409;border:1px solid var(--border);color:var(--text);padding:10px;border-radius:6px;font-size:13px"></textarea>
+    </div>
+
+    {# Champ WiFi #}
+    <div id="champ-wifi" class="champ-qr" style="display:none">
+      <div class="form-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <input type="text" name="ssid"         placeholder="Nom du réseau (SSID)"       style="width:350px">
+        <input type="text" name="wifi_password" placeholder="Mot de passe WiFi"          style="width:350px">
+        <select name="security" style="width:180px">
+          <option value="WPA">WPA/WPA2</option>
+          <option value="WEP">WEP (déconseillé)</option>
+          <option value="nopass">Sans mot de passe</option>
+        </select>
+      </div>
+    </div>
+
+    {# Champ Email #}
+    <div id="champ-email" class="champ-qr" style="display:none">
+      <div class="form-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <input type="text" name="email"   placeholder="adresse@exemple.com" style="width:350px">
+        <input type="text" name="sujet"   placeholder="Sujet"               style="width:350px">
+        <input type="text" name="message" placeholder="Message"             style="width:350px">
+      </div>
+    </div>
+
+    {# Champ Téléphone #}
+    <div id="champ-tel" class="champ-qr" style="display:none">
+      <input type="text" name="numero" placeholder="+33612345678" style="width:280px">
+    </div>
+
+    {# Champ Contact #}
+    <div id="champ-contact" class="champ-qr" style="display:none">
+      <div class="form-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <input type="text" name="nom"   placeholder="Nom complet"    style="width:350px">
+        <input type="text" name="tel"   placeholder="Téléphone"      style="width:350px">
+        <input type="text" name="email" placeholder="Email"          style="width:350px">
+        <input type="text" name="org"   placeholder="Organisation"   style="width:350px">
+      </div>
+    </div>
+  </form>
+
+  {# Résultat QR généré #}
+  {% if action == 'generer' and resultat %}
+    {% if resultat.erreur %}
+      <div class="alert-err" style="margin-top:14px">⚠ {{ resultat.erreur }}</div>
+    {% else %}
+    <div class="qr-result">
+      <img src="data:image/png;base64,{{ resultat.image_b64 }}"
+           alt="QR Code" class="qr-img">
+      <div class="qr-meta">
+        <div class="card-title">QR Code généré</div>
+        <div class="detect-row"><span class="dim">Type</span><strong>{{ resultat.type }}</strong></div>
+        <div class="detect-row"><span class="dim">Taille contenu</span><strong>{{ resultat.taille }} caractères</strong></div>
+        <div class="detect-row">
+          <span class="dim">Contenu encodé</span>
+          <code style="font-size:11px;word-break:break-all;max-width:300px">{{ resultat.contenu[:80] }}{% if resultat.contenu|length > 80 %}…{% endif %}</code>
+        </div>
+        <a href="data:image/png;base64,{{ resultat.image_b64 }}"
+           download="pysecops_qr.png" class="btn" style="margin-top:14px;display:inline-block;text-decoration:none">
+          ⬇ Télécharger le QR
+        </a>
+      </div>
+    </div>
+    {% endif %}
+  {% endif %}
+</div>
+
+{# ── PANNEAU ANALYSE ── #}
+<div id="panneau-analyser" class="card"
+     style="{% if action != 'analyser' %}display:none{% endif %}">
+  <div class="card-title">Analyser le contenu d'un QR scanné</div>
+  <form method="POST">
+    <input type="hidden" name="action" value="analyser">
+    <textarea name="contenu_qr"
+              placeholder="Collez ici le texte/URL décodé de votre QR code..."
+              style="width:100%;min-height:100px;background:#010409;border:1px solid var(--border);color:var(--text);padding:12px;border-radius:6px;font-family:monospace;font-size:13px;resize:vertical"></textarea>
+    <div style="margin-top:10px">
+      <button type="submit" class="btn">🔍 Analyser</button>
+    </div>
+  </form>
+
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:14px">⚠ {{ erreur }}</div>
+  {% endif %}
+
+  {% if action == 'analyser' and analyse %}
+  <div class="result-panel {{ analyse.couleur }}" style="margin-top:20px">
+    <div class="result-header">
+      {% if analyse.couleur == 'green' %}✅{% elif analyse.couleur == 'orange' %}⚠{% else %}🚨{% endif %}
+      <span>{{ analyse.niveau }}</span>
+      <span class="badge {% if analyse.couleur == 'green' %}ok{% elif analyse.couleur == 'orange' %}warn{% else %}danger{% endif %}" style="margin-left:auto">
+        {{ analyse.type }}
+      </span>
+    </div>
+    <div class="stats-row" style="margin-top:12px">
+      <div class="mini-stat"><div class="dim">Score risque</div><strong>{{ analyse.score }}/100</strong></div>
+      <div class="mini-stat"><div class="dim">Longueur</div><strong>{{ analyse.longueur }} car.</strong></div>
+    </div>
+  </div>
+
+  {% if analyse.details %}
+  <div class="card" style="margin-top:14px">
+    <div class="card-title">Détails du contenu</div>
+    <div class="detect-body">
+      {% for cle, val in analyse.details.items() %}
+      <div class="detect-row">
+        <span class="dim">{{ cle | capitalize }}</span>
+        <span>{{ val }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if analyse.alertes %}
+  <div class="card" style="margin-top:0">
+    <div class="card-title">Alertes détectées</div>
+    {% for a in analyse.alertes %}
+    <div class="check-row">
+      <div class="check-nom">{{ a.msg }}</div>
+      <span class="badge {% if a.type == 'CRITIQUE' %}danger{% elif a.type == 'HAUTE' %}danger{% elif a.type == 'MOYENNE' %}warn{% else %}info{% endif %}">
+        {{ a.type }}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+
+<script>
+function afficherChamps() {
+  const type = document.getElementById('type-qr').value;
+  document.querySelectorAll('.champ-qr').forEach(el => el.style.display = 'none');
+  const cible = document.getElementById('champ-' + type);
+  if (cible) cible.style.display = 'block';
+}
+
+function basculerOnglet(onglet) {
+  const generer  = document.getElementById('panneau-generer');
+  const analyser = document.getElementById('panneau-analyser');
+  const btns     = document.querySelectorAll('.tab-btn');
+  if (onglet === 'generer') {
+    generer.style.display  = 'block';
+    analyser.style.display = 'none';
+    btns[0].classList.add('active');
+    btns[1].classList.remove('active');
+  } else {
+    generer.style.display  = 'none';
+    analyser.style.display = 'block';
+    btns[0].classList.remove('active');
+    btns[1].classList.add('active');
+  }
+}
+
+afficherChamps();
+</script>
+{% endblock %}

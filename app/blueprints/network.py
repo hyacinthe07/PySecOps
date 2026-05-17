@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request
-from app.utils.stats_utils import incrementer
+from app.utils.db_utils import enregistrer as incrementer
 from app.utils.network_utils import analyser_whois, analyser_dns, analyser_ip
 
 network_bp = Blueprint('network', __name__)

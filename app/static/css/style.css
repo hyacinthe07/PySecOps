@@ -121,3 +121,71 @@ tr:hover td{background:rgba(88,166,255,.04)}
 
 /* ─── PURPLE BADGE ─── */
 .badge.purple { background: rgba(188,140,255,.15); color: var(--purple); }
+
+/* ─── TABS ─── */
+.tab-bar { display:flex; gap:8px; margin-bottom:16px; }
+.tab-btn {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--dim);
+  padding: 9px 20px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+}
+.tab-btn.active { background: rgba(88,166,255,.1); border-color: var(--blue); color: var(--blue); }
+.tab-btn:hover  { color: var(--text); }
+
+/* ─── QR RESULT ─── */
+.qr-result { display:flex; gap:24px; align-items:flex-start; margin-top:20px; flex-wrap:wrap; }
+.qr-img    { width:180px; height:180px; border-radius:8px; border:1px solid var(--border); }
+.qr-meta   { flex:1; min-width:200px; }
+
+/* ─── CHAT ─── */
+.msg-user, .msg-bot {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.msg-user { flex-direction: row-reverse; }
+.msg-avatar {
+  font-size: 20px;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+.msg-bubble {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 85%;
+}
+.msg-bubble.user {
+  background: rgba(88,166,255,.1);
+  border-color: rgba(88,166,255,.3);
+  color: var(--text);
+}
+
+/* ─── CHIPS SUJETS ─── */
+.chip {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--blue);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.chip:hover { background: rgba(88,166,255,.1); border-color: var(--blue); }

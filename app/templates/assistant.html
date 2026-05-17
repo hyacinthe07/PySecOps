@@ -1,0 +1,115 @@
+{% extends "layout.html" %}
+{% block titre %}Assistant Cybersécurité{% endblock %}
+{% block page_titre %}🤖 Assistant Cybersécurité{% endblock %}
+{% block page_sous %}Posez vos questions sur la cybersécurité — réponses instantanées{% endblock %}
+
+{% block contenu %}
+<div class="card" style="max-width:800px">
+  <div class="card-title">Sujets disponibles</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+    {% for sujet in ['XSS','Injection SQL','Ransomware','Phishing','SHA256','MD5','AES','RSA','MFA','VPN','OWASP','Pentest','Zero-Day','Firewall','Hash','Mot de passe fort'] %}
+    <button class="chip" onclick="poserQuestion('Qu\'est-ce que {{ sujet }} ?')">{{ sujet }}</button>
+    {% endfor %}
+  </div>
+</div>
+
+{# Zone de conversation #}
+<div class="card" style="max-width:800px">
+  <div id="chat-box" style="min-height:300px;max-height:500px;overflow-y:auto;margin-bottom:16px;display:flex;flex-direction:column;gap:12px">
+    <div class="msg-bot">
+      <div class="msg-avatar">🤖</div>
+      <div class="msg-bubble">
+        Bonjour ! Je suis l'assistant cybersécurité de PySecOps.<br>
+        Posez-moi une question sur les attaques, la cryptographie, les bonnes pratiques ou les outils de sécurité.
+      </div>
+    </div>
+  </div>
+
+  <div class="form-row">
+    <input type="text" id="question-input"
+           placeholder="Ex: Qu'est-ce que le XSS ? Comment créer un mot de passe fort ?"
+           style="flex:1"
+           onkeydown="if(event.key==='Enter') envoyerQuestion()">
+    <button class="btn" onclick="envoyerQuestion()">➤ Envoyer</button>
+  </div>
+</div>
+
+<script>
+const chatBox = document.getElementById('chat-box');
+const input   = document.getElementById('question-input');
+
+function poserQuestion(q) {
+  input.value = q;
+  envoyerQuestion();
+}
+
+async function envoyerQuestion() {
+  const question = input.value.trim();
+  if (!question) return;
+
+  {# Message utilisateur #}
+  ajouterMessage('user', question);
+  input.value = '';
+
+  {# Indicateur de chargement #}
+  const loadId = 'load-' + Date.now();
+  ajouterMessage('bot', '...', loadId);
+
+  try {
+    const r = await fetch('/api/assistant', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ question }),
+    });
+    const data = await r.json();
+
+    const el = document.getElementById(loadId);
+    if (el) {
+      el.innerHTML = formaterReponse(data);
+    }
+  } catch (e) {
+    const el = document.getElementById(loadId);
+    if (el) el.innerHTML = '⚠ Erreur de connexion.';
+  }
+
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function ajouterMessage(role, contenu, id) {
+  const div = document.createElement('div');
+  div.className = role === 'user' ? 'msg-user' : 'msg-bot';
+  if (id) div.id = id;
+
+  if (role === 'user') {
+    div.innerHTML = `<div class="msg-bubble user">${contenu}</div><div class="msg-avatar">👤</div>`;
+  } else {
+    div.innerHTML = `<div class="msg-avatar">🤖</div><div class="msg-bubble">${contenu}</div>`;
+  }
+  chatBox.appendChild(div);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function formaterReponse(data) {
+  if (data.erreur) return `⚠ ${data.erreur}`;
+
+  const badge = data.severite === 'CRITIQUE' ? 'danger' :
+                data.severite === 'HAUTE'    ? 'danger' :
+                data.severite === 'INFO'     ? 'info'   : 'warn';
+
+  const texte = data.reponse
+    .replace(/\n/g, '<br>')
+    .replace(/✅/g, '<span style="color:var(--green)">✅</span>')
+    .replace(/❌/g, '<span style="color:var(--red)">❌</span>')
+    .replace(/⚠/g,  '<span style="color:var(--orange)">⚠</span>')
+    .replace(/🛡/g,  '<span>🛡</span>');
+
+  return `
+    <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px">
+      <strong style="color:var(--blue)">${data.titre}</strong>
+      <span class="badge ${badge}" style="font-size:10px">${data.categorie}</span>
+    </div>
+    <div style="line-height:1.7;font-size:13px">${texte}</div>
+  `;
+}
+</script>
+{% endblock %}
