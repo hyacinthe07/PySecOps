@@ -1,204 +1,359 @@
 {% extends "layout.html" %}
-{% block titre %}Scan complet{% endblock %}
-{% block page_titre %}🔬 Scan complet{% endblock %}
-{% block page_sous %}Fingerprinting multi-couches — ports, CVEs, technologies, secrets, attack surface{% endblock %}
+{% block titre %}Deep Recon — Scan complet{% endblock %}
+{% block page_titre %}🔬 Deep Recon Engine{% endblock %}
+{% block page_sous %}Fingerprinting multi-couches en temps réel — ports, CVEs, technologies, secrets{% endblock %}
+
 {% block contenu %}
 
+{# ── FORMULAIRE ── #}
 <div class="card">
   <div class="card-title">Cible à analyser</div>
-  <form method="POST" class="form-row">
-    <input type="text" name="cible"
+  <div class="form-row">
+    <input type="text" id="input-cible"
            placeholder="IP ou domaine (ex: 192.168.1.1 ou example.com)"
-           style="width:420px" required>
-    <button type="submit" class="btn">🔬 Lancer le scan</button>
-  </form>
+           style="width:420px"
+           onkeydown="if(event.key==='Enter') lancerScan()">
+    <button class="btn" id="btn-scan" onclick="lancerScan()">
+      🔬 Lancer le scan
+    </button>
+    <button class="btn" id="btn-stop"
+            onclick="arreterScan()"
+            style="display:none;background:var(--red);color:white">
+      ⏹ Arrêter
+    </button>
+  </div>
   <p class="dim" style="font-size:12px;margin-top:8px">
     ⚠ Utilisez uniquement sur des cibles que vous êtes autorisé à analyser.
   </p>
-  {% if erreur %}
-  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
-  {% endif %}
 </div>
 
-{% if resultat %}
-
-{# ── ATTACK SURFACE SCORE ── #}
-{% set as = resultat.attack_surface %}
-<div class="result-panel {{ as.couleur }}">
-  <div class="result-header">
-    {% if as.couleur == 'red' %}🚨{% elif as.couleur == 'orange' %}⚠{% else %}✅{% endif %}
-    Attack Surface Score — {{ as.niveau }}
-    <span style="font-size:26px;font-weight:700;margin-left:auto">{{ as.score }}/100</span>
-  </div>
-  <div class="bar-wrap" style="margin-top:10px">
-    <div class="bar {{ 'faible' if as.couleur == 'red' else ('moyen' if as.couleur == 'orange' else 'fort') }}"
-         style="width:{{ as.score }}%"></div>
-  </div>
-  <div class="stats-row" style="margin-top:14px">
-    <div class="mini-stat"><div class="dim">IP</div><strong>{{ resultat.ip }}</strong></div>
-    <div class="mini-stat"><div class="dim">Ports ouverts</div><strong style="color:var(--orange)">{{ resultat.nb_ports }}</strong></div>
-    <div class="mini-stat"><div class="dim">CVEs trouvées</div><strong style="color:var(--red)">{{ resultat.nb_cves }}</strong></div>
-    <div class="mini-stat"><div class="dim">Secrets exposés</div><strong style="color:var(--red)">{{ resultat.nb_secrets }}</strong></div>
-    <div class="mini-stat"><div class="dim">Scanné le</div><strong style="font-size:11px">{{ resultat.date_scan }}</strong></div>
-  </div>
-</div>
-
-{# ── VECTEURS D'ATTAQUE ── #}
-{% if as.vecteurs %}
-<div class="card" style="margin-top:16px">
-  <div class="card-title">🎯 Vecteurs d'attaque identifiés ({{ as.nb_vecteurs }})</div>
-  {% for v in as.vecteurs %}
-  <div class="check-row">
-    <div>
-      <div class="check-nom">{{ v.etape }}</div>
-      <div class="check-conseil">{{ v.detail }}</div>
-      {% if v.url %}<a href="{{ v.url }}" target="_blank" style="font-size:11px;color:var(--blue)">→ Détails CVE</a>{% endif %}
+{# ── PROGRESSION ── #}
+<div id="zone-progression" style="display:none">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="card-title" style="margin-bottom:0">Progression du scan</div>
+      <span id="etape-label" class="dim" style="font-size:12px"></span>
     </div>
-    <span class="badge {% if v.risque == 'CRITIQUE' %}danger{% elif v.risque == 'HAUTE' %}danger{% elif v.risque == 'MOYENNE' %}warn{% else %}info{% endif %}">
-      {{ v.risque }}
-    </span>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
-
-{# ── RECOMMANDATIONS ── #}
-{% if as.recommandations %}
-<div class="card">
-  <div class="card-title">✅ Plan de remédiation prioritaire</div>
-  {% for r in as.recommandations %}
-  <div class="check-row">
-    <div>
-      <div class="check-nom">{{ r.action }}</div>
-      <div class="check-conseil">{{ r.detail }}</div>
+    <div class="bar-wrap">
+      <div class="bar fort" id="barre-progression" style="width:0%;transition:width .4s ease"></div>
     </div>
-    <span class="badge {% if r.priorite == 'CRITIQUE' %}danger{% else %}warn{% endif %}">
-      {{ r.priorite }}
-    </span>
-  </div>
-  {% endfor %}
-</div>
-{% endif %}
 
-{# ── PORTS OUVERTS ── #}
-<div class="card">
-  <div class="card-title">🔌 Ports ouverts — {{ resultat.nb_ports }} détectés</div>
-  {% if resultat.ports %}
-  <table>
-    <tr><th>Port</th><th>Service</th><th>Version détectée</th><th>Risque</th><th>Bannière</th></tr>
-    {% for p in resultat.ports %}
-    <tr>
-      <td><strong>{{ p.port }}</strong></td>
-      <td>{{ p.service }}</td>
-      <td><code style="font-size:11px">{{ p.version or '—' }}</code></td>
-      <td>
-        {% if p.dangereux %}
-        <span class="badge {% if p.risque == 'CRITIQUE' %}danger{% else %}warn{% endif %}">{{ p.risque }}</span>
-        {% else %}
-        <span class="badge ok">OK</span>
-        {% endif %}
-      </td>
-      <td style="font-size:11px;font-family:monospace;color:var(--dim);max-width:200px;overflow:hidden">
-        {{ p.banner[:60] if p.banner else '—' }}
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
-  {% else %}
-  <p class="dim">Aucun port ouvert détecté.</p>
-  {% endif %}
-</div>
-
-{# ── CVEs TROUVÉES ── #}
-{% if resultat.cves %}
-<div class="card">
-  <div class="card-title">💀 CVEs détectées — {{ resultat.nb_cves }} vulnérabilités</div>
-  <table>
-    <tr><th>CVE ID</th><th>Service</th><th>CVSS</th><th>Sévérité</th><th>Description</th></tr>
-    {% for cve in resultat.cves %}
-    <tr>
-      <td>
-        <a href="{{ cve.url }}" target="_blank"
-           style="color:var(--blue);font-family:monospace;font-size:12px">
-          {{ cve.id }}
-        </a>
-      </td>
-      <td style="font-size:12px">{{ cve.service_associe }} ({{ cve.port_associe }})</td>
-      <td>
-        <strong style="color:{% if cve.score >= 9 %}var(--red){% elif cve.score >= 7 %}var(--orange){% else %}var(--text){% endif %}">
-          {{ cve.score }}
-        </strong>
-      </td>
-      <td>
-        <span class="badge {% if cve.severite in ('CRITICAL','CRITIQUE') %}danger{% elif cve.severite in ('HIGH','HAUTE') %}danger{% elif cve.severite in ('MEDIUM','MOYENNE') %}warn{% else %}info{% endif %}">
-          {{ cve.severite }}
-        </span>
-      </td>
-      <td style="font-size:11px;color:var(--dim)">{{ cve.desc[:100] }}…</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
-
-{# ── TECHNOLOGIES ── #}
-{% if resultat.technologies and resultat.technologies.technologies %}
-<div class="card">
-  <div class="card-title">🖥 Technologies détectées</div>
-  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
-    {% for tech, version in resultat.technologies.technologies.items() %}
-    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px">
-      <strong style="color:var(--blue)">{{ tech }}</strong>
-      {% if version and version != 'détecté' %}
-      <span class="dim"> v{{ version }}</span>
-      {% endif %}
+    {# Terminal de logs ── #}
+    <div id="terminal"
+         style="margin-top:14px;background:#010409;border:1px solid var(--border);
+                border-radius:8px;padding:14px;font-family:'Fira Code',monospace;
+                font-size:12px;line-height:1.8;height:180px;overflow-y:auto;
+                color:var(--dim)">
+      <span style="color:var(--green)">pysecops@recon</span>:<span style="color:var(--blue)">~$</span>
+      <span id="terminal-cursor" style="color:var(--text)"> En attente...</span>
     </div>
-    {% endfor %}
+  </div>
+</div>
+
+{# ── RÉSULTATS TEMPS RÉEL ── #}
+<div id="zone-resultats" style="display:none">
+
+  {# Score ── #}
+  <div id="score-panel" style="display:none;margin-bottom:16px">
+    <div class="result-panel" id="score-card">
+      <div class="result-header">
+        <span id="score-icon">📊</span>
+        <span id="score-niveau">—</span>
+        <span id="score-val" style="font-size:26px;font-weight:700;margin-left:auto">—</span>
+      </div>
+      <div class="bar-wrap" style="margin-top:10px">
+        <div class="bar" id="score-bar" style="width:0%"></div>
+      </div>
+      <div class="stats-row" style="margin-top:14px">
+        <div class="mini-stat"><div class="dim">Ports ouverts</div><strong id="stat-ports">0</strong></div>
+        <div class="mini-stat"><div class="dim">CVEs trouvées</div><strong id="stat-cves" style="color:var(--red)">0</strong></div>
+        <div class="mini-stat"><div class="dim">Secrets exposés</div><strong id="stat-secrets" style="color:var(--red)">0</strong></div>
+        <div class="mini-stat"><div class="dim">IP analysée</div><strong id="stat-ip">—</strong></div>
+      </div>
+    </div>
   </div>
 
-  {% if resultat.technologies.headers_securite %}
-  <div class="card-title" style="margin-top:12px">Headers de sécurité</div>
-  {% for header, valeur in resultat.technologies.headers_securite.items() %}
-  <div class="detect-row">
-    <span class="dim">{{ header }}</span>
-    {% if valeur %}
-    <span class="badge ok" style="font-size:10px">✔ Présent</span>
-    {% else %}
-    <span class="badge danger" style="font-size:10px">✘ Absent</span>
-    {% endif %}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+    {# Ports ── #}
+    <div class="card" id="card-ports" style="display:none">
+      <div class="card-title">🔌 Ports ouverts</div>
+      <table id="table-ports">
+        <tr><th>Port</th><th>Service</th><th>Version</th><th>Risque</th></tr>
+      </table>
+    </div>
+
+    {# CVEs ── #}
+    <div class="card" id="card-cves" style="display:none">
+      <div class="card-title">💀 CVEs détectées</div>
+      <table id="table-cves">
+        <tr><th>CVE</th><th>CVSS</th><th>Service</th><th>Sévérité</th></tr>
+      </table>
+    </div>
+
   </div>
-  {% endfor %}
-  {% endif %}
-</div>
-{% endif %}
 
-{# ── SECRETS EXPOSÉS ── #}
-{% if resultat.secrets %}
-<div class="card">
-  <div class="card-title">🔑 Fichiers & endpoints sensibles exposés ({{ resultat.nb_secrets }})</div>
-  <table>
-    <tr><th>Chemin</th><th>Code HTTP</th><th>Taille</th><th>Sévérité</th><th>Description</th></tr>
-    {% for s in resultat.secrets %}
-    <tr>
-      <td>
-        <a href="{{ s.url }}" target="_blank"
-           style="color:var(--blue);font-family:monospace;font-size:12px">
-          {{ s.chemin }}
-        </a>
-      </td>
-      <td><span style="color:var(--green)">{{ s.code }}</span></td>
-      <td class="dim" style="font-size:11px">{{ s.taille }} octets</td>
-      <td>
-        <span class="badge {% if s.severite == 'CRITIQUE' %}danger{% elif s.severite == 'HAUTE' %}danger{% elif s.severite == 'MOYENNE' %}warn{% else %}info{% endif %}">
-          {{ s.severite }}
-        </span>
-      </td>
-      <td style="font-size:11px;color:var(--dim)">{{ s.description }}</td>
-    </tr>
-    {% endfor %}
-  </table>
-</div>
-{% endif %}
+  {# Technologies ── #}
+  <div class="card" id="card-tech" style="display:none">
+    <div class="card-title">🖥 Technologies détectées</div>
+    <div id="tech-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px"></div>
+  </div>
 
-{% endif %}
+  {# Secrets ── #}
+  <div class="card" id="card-secrets" style="display:none">
+    <div class="card-title">🔑 Fichiers sensibles exposés</div>
+    <table id="table-secrets">
+      <tr><th>Chemin</th><th>Sévérité</th><th>Description</th></tr>
+    </table>
+  </div>
+
+  {# Vecteurs d'attaque ── #}
+  <div class="card" id="card-vecteurs" style="display:none">
+    <div class="card-title">🎯 Vecteurs d'attaque identifiés</div>
+    <div id="liste-vecteurs"></div>
+  </div>
+
+  {# Recommandations ── #}
+  <div class="card" id="card-reco" style="display:none">
+    <div class="card-title">✅ Plan de remédiation</div>
+    <div id="liste-reco"></div>
+  </div>
+
+</div>
+
+<script>
+let eventSource = null;
+let nbPorts  = 0;
+let nbCves   = 0;
+let nbSecret = 0;
+
+function lancerScan() {
+  const cible = document.getElementById('input-cible').value.trim();
+  if (!cible) return;
+
+  {# Réinitialiser #}
+  reinitialiser();
+
+  document.getElementById('btn-scan').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'inline-block';
+  document.getElementById('zone-progression').style.display = 'block';
+  document.getElementById('zone-resultats').style.display = 'block';
+
+  {# Ouvrir le flux SSE #}
+  eventSource = new EventSource(`/recon/stream?cible=${encodeURIComponent(cible)}`);
+
+  eventSource.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    traiterEvenement(data);
+  };
+
+  eventSource.onerror = function() {
+    logTerminal('❌ Connexion interrompue.', 'var(--red)');
+    arreterScan();
+  };
+}
+
+function traiterEvenement(data) {
+  switch(data.type) {
+
+    case 'etape':
+      const pct = Math.round((data.step / data.total) * 100);
+      document.getElementById('barre-progression').style.width = pct + '%';
+      document.getElementById('etape-label').textContent = `Étape ${data.step}/${data.total}`;
+      logTerminal(data.msg, 'var(--blue)');
+      break;
+
+    case 'info':
+      logTerminal(data.msg, 'var(--dim)');
+      break;
+
+    case 'port':
+      nbPorts++;
+      document.getElementById('stat-ports').textContent = nbPorts;
+      document.getElementById('card-ports').style.display = 'block';
+      const coulPort = data.dangereux ? 'var(--red)' : 'var(--green)';
+      const badgePort = data.dangereux
+        ? `<span class="badge danger" style="font-size:10px">${data.risque}</span>`
+        : `<span class="badge ok" style="font-size:10px">OK</span>`;
+      ajouterLigne('table-ports', `
+        <td><strong style="color:${coulPort}">${data.port}</strong></td>
+        <td>${data.service}</td>
+        <td><code style="font-size:10px">${data.version || '—'}</code></td>
+        <td>${badgePort}</td>
+      `);
+      logTerminal(`  → Port ${data.port}/${data.service} ouvert ${data.dangereux ? '⚠' : ''}`, coulPort);
+      break;
+
+    case 'cve':
+      nbCves++;
+      document.getElementById('stat-cves').textContent = nbCves;
+      document.getElementById('card-cves').style.display = 'block';
+      const coulCve = data.score >= 9 ? 'var(--red)' : data.score >= 7 ? 'var(--orange)' : 'var(--text)';
+      const sevBadge = ['CRITICAL','CRITIQUE','HIGH','HAUTE'].includes(data.severite)
+        ? 'danger' : data.severite === 'MEDIUM' || data.severite === 'MOYENNE' ? 'warn' : 'info';
+      ajouterLigne('table-cves', `
+        <td><a href="${data.url}" target="_blank"
+               style="color:var(--blue);font-family:monospace;font-size:11px">${data.id}</a></td>
+        <td><strong style="color:${coulCve}">${data.score}</strong></td>
+        <td style="font-size:11px">${data.service} (${data.port})</td>
+        <td><span class="badge ${sevBadge}" style="font-size:10px">${data.severite}</span></td>
+      `);
+      logTerminal(`  → CVE ${data.id} (CVSS ${data.score}) sur ${data.service}`, coulCve);
+      break;
+
+    case 'tech':
+      document.getElementById('card-tech').style.display = 'block';
+      const techList = document.getElementById('tech-list');
+      data.technologies.forEach(t => {
+        const span = document.createElement('span');
+        span.style.cssText = 'background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);color:var(--blue);padding:4px 12px;border-radius:4px;font-size:12px';
+        span.textContent = t;
+        techList.appendChild(span);
+      });
+      break;
+
+    case 'secret':
+      nbSecret++;
+      document.getElementById('stat-secrets').textContent = nbSecret;
+      document.getElementById('card-secrets').style.display = 'block';
+      const sevSec = data.severite;
+      const badgeSec = sevSec === 'CRITIQUE' || sevSec === 'HAUTE' ? 'danger' : sevSec === 'MOYENNE' ? 'warn' : 'info';
+      ajouterLigne('table-secrets', `
+        <td><a href="${data.url}" target="_blank"
+               style="color:var(--red);font-family:monospace;font-size:11px">${data.chemin}</a></td>
+        <td><span class="badge ${badgeSec}" style="font-size:10px">${sevSec}</span></td>
+        <td style="font-size:11px;color:var(--dim)">${data.description}</td>
+      `);
+      logTerminal(`  🔑 Fichier exposé : ${data.chemin} [${sevSec}]`, 'var(--red)');
+      break;
+
+    case 'score':
+      afficherScore(data);
+      break;
+
+    case 'termine':
+      document.getElementById('barre-progression').style.width = '100%';
+      logTerminal('', '');
+      logTerminal(`✅ Scan terminé — ${data.nb_ports} ports, ${data.nb_cves} CVEs, ${data.nb_secrets} secrets`, 'var(--green)');
+      document.getElementById('stat-ip').textContent = data.ip;
+      arreterScan(false);
+      break;
+
+    case 'erreur':
+      logTerminal(`❌ ${data.msg}`, 'var(--red)');
+      arreterScan(false);
+      break;
+  }
+}
+
+function afficherScore(data) {
+  document.getElementById('score-panel').style.display = 'block';
+  const card = document.getElementById('score-card');
+  const couleur = data.couleur === 'red' ? 'red' : data.couleur === 'orange' ? 'orange' : 'green';
+  card.className = `result-panel ${couleur}`;
+
+  const icon = data.couleur === 'red' ? '🚨' : data.couleur === 'orange' ? '⚠' : '✅';
+  document.getElementById('score-icon').textContent   = icon;
+  document.getElementById('score-niveau').textContent = data.niveau;
+  document.getElementById('score-val').textContent    = `${data.score}/100`;
+
+  const bar = document.getElementById('score-bar');
+  bar.style.width = data.score + '%';
+  bar.className = `bar ${data.couleur === 'red' ? 'faible' : data.couleur === 'orange' ? 'moyen' : 'fort'}`;
+
+  {# Vecteurs #}
+  if (data.vecteurs && data.vecteurs.length > 0) {
+    document.getElementById('card-vecteurs').style.display = 'block';
+    const liste = document.getElementById('liste-vecteurs');
+    data.vecteurs.forEach(v => {
+      const badge = ['CRITIQUE','HAUTE'].includes(v.risque) ? 'danger' : v.risque === 'MOYENNE' ? 'warn' : 'info';
+      const div = document.createElement('div');
+      div.className = 'check-row';
+      div.innerHTML = `
+        <div>
+          <div class="check-nom">${v.etape}</div>
+          <div class="check-conseil">${v.detail}</div>
+          ${v.url ? `<a href="${v.url}" target="_blank" style="font-size:11px;color:var(--blue)">→ Détails</a>` : ''}
+        </div>
+        <span class="badge ${badge}">${v.risque}</span>
+      `;
+      liste.appendChild(div);
+    });
+  }
+
+  {# Recommandations #}
+  if (data.recommandations && data.recommandations.length > 0) {
+    document.getElementById('card-reco').style.display = 'block';
+    const liste = document.getElementById('liste-reco');
+    data.recommandations.forEach(r => {
+      const badge = r.priorite === 'CRITIQUE' ? 'danger' : 'warn';
+      const div = document.createElement('div');
+      div.className = 'check-row';
+      div.innerHTML = `
+        <div>
+          <div class="check-nom">${r.action}</div>
+          <div class="check-conseil">${r.detail}</div>
+        </div>
+        <span class="badge ${badge}">${r.priorite}</span>
+      `;
+      liste.appendChild(div);
+    });
+  }
+}
+
+function ajouterLigne(tableId, html) {
+  const table = document.getElementById(tableId);
+  const tr    = document.createElement('tr');
+  tr.innerHTML = html;
+  table.appendChild(tr);
+}
+
+function logTerminal(msg, couleur) {
+  if (!msg) {
+    document.getElementById('terminal').innerHTML += '<br>';
+    return;
+  }
+  const term = document.getElementById('terminal');
+  const span = document.createElement('div');
+  span.style.color  = couleur || 'var(--dim)';
+  span.textContent  = msg;
+  term.appendChild(span);
+  term.scrollTop = term.scrollHeight;
+}
+
+function arreterScan(fermer = true) {
+  if (fermer && eventSource) {
+    eventSource.close();
+    eventSource = null;
+  }
+  document.getElementById('btn-scan').style.display = 'inline-block';
+  document.getElementById('btn-stop').style.display = 'none';
+}
+
+function reinitialiser() {
+  nbPorts = 0; nbCves = 0; nbSecret = 0;
+  ['card-ports','card-cves','card-tech','card-secrets',
+   'card-vecteurs','card-reco','score-panel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  document.getElementById('table-ports').innerHTML =
+    '<tr><th>Port</th><th>Service</th><th>Version</th><th>Risque</th></tr>';
+  document.getElementById('table-cves').innerHTML =
+    '<tr><th>CVE</th><th>CVSS</th><th>Service</th><th>Sévérité</th></tr>';
+  document.getElementById('table-secrets').innerHTML =
+    '<tr><th>Chemin</th><th>Sévérité</th><th>Description</th></tr>';
+  document.getElementById('tech-list').innerHTML    = '';
+  document.getElementById('liste-vecteurs').innerHTML = '';
+  document.getElementById('liste-reco').innerHTML   = '';
+  document.getElementById('terminal').innerHTML =
+    '<span style="color:var(--green)">pysecops@recon</span>:<span style="color:var(--blue)">~$</span> ';
+  document.getElementById('barre-progression').style.width = '0%';
+  document.getElementById('stat-ports').textContent  = '0';
+  document.getElementById('stat-cves').textContent   = '0';
+  document.getElementById('stat-secrets').textContent = '0';
+  document.getElementById('stat-ip').textContent     = '—';
+  if (eventSource) { eventSource.close(); eventSource = null; }
+}
+</script>
 {% endblock %}

@@ -1,0 +1,203 @@
+cat > app/templates/threat/index.html << 'EOF'
+{% extends "layout.html" %}
+{% block titre %}Threat Intelligence{% endblock %}
+{% block page_titre %}🚨 Threat Intelligence{% endblock %}
+{% block page_sous %}Réputation IP/domaine — Shodan, URLScan, DNSBL, crt.sh, IPInfo{% endblock %}
+
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Cible à analyser</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="cible"
+           placeholder="IP ou domaine (ex: 8.8.8.8 ou malware.com)"
+           style="width:420px" required>
+    <button type="submit" class="btn">🚨 Analyser</button>
+  </form>
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
+  {% endif %}
+</div>
+
+{% if resultat %}
+
+{# Score global #}
+<div class="result-panel {{ resultat.couleur }}">
+  <div class="result-header">
+    {% if resultat.couleur == 'red' %}🚨{% elif resultat.couleur == 'orange' %}⚠{% else %}✅{% endif %}
+    {{ resultat.niveau }}
+    <span style="font-size:26px;font-weight:700;margin-left:auto">
+      {{ resultat.score }}/100
+    </span>
+  </div>
+  <div class="bar-wrap" style="margin-top:10px">
+    <div class="bar {{ 'faible' if resultat.couleur == 'red' else ('moyen' if resultat.couleur == 'orange' else 'fort') }}"
+         style="width:{{ [resultat.score, 3]|max }}%"></div>
+  </div>
+  <div class="stats-row" style="margin-top:14px">
+    <div class="mini-stat"><div class="dim">Cible</div><strong>{{ resultat.cible }}</strong></div>
+    <div class="mini-stat"><div class="dim">IP</div><strong>{{ resultat.ip }}</strong></div>
+    <div class="mini-stat"><div class="dim">Alertes</div>
+      <strong style="color:var(--red)">{{ resultat.alertes|length }}</strong>
+    </div>
+    <div class="mini-stat"><div class="dim">Sources</div>
+      <strong>{{ resultat.sources|length }}</strong>
+    </div>
+  </div>
+</div>
+
+{# Alertes #}
+{% if resultat.alertes %}
+<div class="card" style="margin-top:16px">
+  <div class="card-title">⚠ Alertes de réputation</div>
+  {% for a in resultat.alertes %}
+  <div class="check-row">
+    <div>
+      <div class="check-nom">{{ a.msg }}</div>
+      <div class="check-conseil">Source : {{ a.source }}</div>
+    </div>
+    <span class="badge {% if a.severite == 'CRITIQUE' %}danger{% elif a.severite == 'HAUTE' %}danger{% else %}warn{% endif %}">
+      {{ a.severite }}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# Résultats par source #}
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:4px">
+
+  {# Shodan #}
+  {% if resultat.sources.shodan %}
+  {% set sh = resultat.sources.shodan %}
+  <div class="card">
+    <div class="card-title">🌐 Shodan InternetDB</div>
+    <div class="detect-body">
+      <div class="detect-row">
+        <span class="dim">Ports ouverts</span>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          {% for p in sh.ports %}
+          <span style="background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);
+                       color:var(--blue);padding:1px 8px;border-radius:3px;font-size:11px;
+                       font-family:monospace">{{ p }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="detect-row">
+        <span class="dim">CVEs connues</span>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          {% if sh.vulns %}
+            {% for v in sh.vulns[:5] %}
+            <a href="https://nvd.nist.gov/vuln/detail/{{ v }}" target="_blank"
+               style="background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);
+                      color:var(--red);padding:1px 8px;border-radius:3px;font-size:11px;
+                      text-decoration:none;font-family:monospace">{{ v }}</a>
+            {% endfor %}
+          {% else %}
+            <span class="badge ok" style="font-size:10px">Aucune</span>
+          {% endif %}
+        </div>
+      </div>
+      {% if sh.tags %}
+      <div class="detect-row">
+        <span class="dim">Tags</span>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          {% for tag in sh.tags %}
+          <span class="badge warn" style="font-size:10px">{{ tag }}</span>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# URLScan #}
+  {% if resultat.sources.urlscan %}
+  {% set us = resultat.sources.urlscan %}
+  <div class="card">
+    <div class="card-title">🔎 URLScan.io</div>
+    <div class="detect-body">
+      <div class="detect-row">
+        <span class="dim">Scans totaux</span>
+        <strong>{{ us.total_scans }}</strong>
+      </div>
+      <div class="detect-row">
+        <span class="dim">Malveillants</span>
+        <strong style="color:{% if us.malicious > 0 %}var(--red){% else %}var(--green){% endif %}">
+          {{ us.malicious }}
+        </strong>
+      </div>
+      {% if us.derniers %}
+      <div style="margin-top:8px">
+        <p class="dim" style="font-size:11px;margin-bottom:6px">Derniers scans</p>
+        {% for s in us.derniers[:3] %}
+        <div style="font-size:11px;color:var(--dim);padding:3px 0;border-bottom:1px solid var(--border)">
+          {{ s.date }} — {{ s.url[:50] }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# IPInfo #}
+  {% if resultat.sources.ipinfo %}
+  {% set ii = resultat.sources.ipinfo %}
+  <div class="card">
+    <div class="card-title">📍 IPInfo</div>
+    <div class="detect-body">
+      <div class="detect-row"><span class="dim">Organisation</span><strong>{{ ii.org or '—' }}</strong></div>
+      <div class="detect-row"><span class="dim">Pays</span><span>{{ ii.country or '—' }}</span></div>
+      <div class="detect-row"><span class="dim">Ville</span><span>{{ ii.city or '—' }}</span></div>
+      <div class="detect-row"><span class="dim">Hostname</span><code style="font-size:11px">{{ ii.hostname or '—' }}</code></div>
+      <div class="detect-row"><span class="dim">Timezone</span><span>{{ ii.timezone or '—' }}</span></div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# DNSBL #}
+  {% if resultat.sources.dnsbl %}
+  <div class="card">
+    <div class="card-title">🚫 Blacklists DNS (DNSBL)</div>
+    <div class="detect-body">
+      <div class="detect-row">
+        <span class="dim">Listes noires</span>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          {% for bl in resultat.sources.dnsbl.listed_in %}
+          <span class="badge danger" style="font-size:11px">{{ bl }}</span>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# crt.sh #}
+  {% if resultat.sources.crtsh %}
+  {% set cr = resultat.sources.crtsh %}
+  <div class="card">
+    <div class="card-title">🔐 Certificats SSL (crt.sh)</div>
+    <div class="detect-body">
+      <div class="detect-row">
+        <span class="dim">Certificats historiques</span>
+        <strong>{{ cr.nb_certificats }}</strong>
+      </div>
+      {% if cr.domaines_associes %}
+      <div style="margin-top:8px">
+        <p class="dim" style="font-size:11px;margin-bottom:6px">Domaines associés</p>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          {% for d in cr.domaines_associes[:6] %}
+          <code style="font-size:11px;background:var(--bg);border:1px solid var(--border);
+                       padding:2px 8px;border-radius:3px">{{ d }}</code>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
+{% endblock %}

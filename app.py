@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask
 from app.blueprints.home      import home_bp
 from app.blueprints.ports     import ports_bp
@@ -12,6 +15,8 @@ from app.blueprints.recon     import recon_bp
 from app.blueprints.ids       import ids_bp
 from app.blueprints.audit     import audit_bp
 from app.blueprints.osint     import osint_bp
+from app.blueprints.threat    import threat_bp
+from app.blueprints.checklist import checklist_bp
 from app.utils.db_utils import init_db
 
 def create_app():
@@ -31,6 +36,8 @@ def create_app():
     app.register_blueprint(ids_bp)
     app.register_blueprint(audit_bp)
     app.register_blueprint(osint_bp)
+    app.register_blueprint(threat_bp)
+    app.register_blueprint(checklist_bp)
     return app
 
 app = create_app()

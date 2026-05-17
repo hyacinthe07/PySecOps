@@ -1,0 +1,193 @@
+{% extends "layout.html" %}
+{% block titre %}Pentest Checklist{% endblock %}
+{% block page_titre %}📝 Pentest Checklist PTES{% endblock %}
+{% block page_sous %}Guide méthodologique interactif — cochez chaque étape de votre pentest{% endblock %}
+
+{% block contenu %}
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div class="card-title" style="margin-bottom:0">Progression globale</div>
+    <span id="compteur" class="dim" style="font-size:13px">0/0 tâches</span>
+  </div>
+  <div class="bar-wrap" style="margin-top:10px">
+    <div class="bar fort" id="barre-globale" style="width:0%"></div>
+  </div>
+</div>
+
+{% set phases = [
+  {
+    "id": "recon",
+    "nom": "Phase 1 — Reconnaissance",
+    "icon": "🔍",
+    "couleur": "blue",
+    "taches": [
+      "Identifier les plages IP du cible (WHOIS, ARIN, RIPE)",
+      "Énumérer les sous-domaines (crt.sh, brute-force DNS)",
+      "Collecter les emails exposés (Hunter.io, OSINT)",
+      "Analyser les enregistrements DNS (A, MX, NS, TXT, SPF, DMARC)",
+      "Identifier les technologies utilisées (Wappalyzer, WhatWeb)",
+      "Rechercher des informations via Google Dorks",
+      "Vérifier l'historique via Wayback Machine",
+      "Collecter les métadonnées des documents publics",
+      "Identifier les employés via LinkedIn",
+      "Rechercher des leaks sur GitHub/Pastebin",
+    ]
+  },
+  {
+    "id": "scanning",
+    "nom": "Phase 2 — Scanning & Enumération",
+    "icon": "⚡",
+    "couleur": "orange",
+    "taches": [
+      "Scanner les ports ouverts (TCP/UDP top 1000)",
+      "Identifier les services et versions (banner grabbing)",
+      "Détecter le système d'exploitation (OS fingerprinting)",
+      "Énumérer les services HTTP/HTTPS (répertoires, fichiers)",
+      "Tester les endpoints d'API exposés",
+      "Vérifier les certificats SSL/TLS et leur expiration",
+      "Identifier les interfaces d'administration",
+      "Scanner les fichiers sensibles exposés (.env, .git, backup)",
+      "Tester la zone de transfert DNS",
+      "Identifier les services SMB/NFS exposés",
+    ]
+  },
+  {
+    "id": "vuln",
+    "nom": "Phase 3 — Analyse des vulnérabilités",
+    "icon": "💀",
+    "couleur": "red",
+    "taches": [
+      "Croiser les versions détectées avec la base CVE (NVD)",
+      "Tester les injections SQL (manual + automatisé)",
+      "Tester les injections XSS (réfléchi, stocké, DOM)",
+      "Vérifier les vulnérabilités CSRF",
+      "Tester les failles LFI/RFI (path traversal)",
+      "Vérifier les failles d'authentification (brute-force, bypass)",
+      "Tester les mauvaises configurations CORS",
+      "Analyser les headers HTTP de sécurité",
+      "Vérifier les permissions d'accès (IDOR)",
+      "Tester les injections de commandes OS",
+      "Vérifier la désérialisation non sécurisée",
+      "Tester les SSRF (Server-Side Request Forgery)",
+    ]
+  },
+  {
+    "id": "exploit",
+    "nom": "Phase 4 — Exploitation",
+    "icon": "🎯",
+    "couleur": "red",
+    "taches": [
+      "Exploiter les CVEs identifiées (PoC publics)",
+      "Tenter une élévation de privilèges",
+      "Accéder aux données sensibles (DB, fichiers config)",
+      "Tenter un mouvement latéral si réseau accessible",
+      "Établir une persistance (test contrôlé)",
+      "Capturer des credentials (hashes, tokens)",
+      "Tester le pivot réseau si VPN/tunnel disponible",
+      "Documenter chaque exploitation avec preuves (screenshots)",
+    ]
+  },
+  {
+    "id": "report",
+    "nom": "Phase 5 — Rapport & Remédiation",
+    "icon": "📋",
+    "couleur": "green",
+    "taches": [
+      "Rédiger la synthèse exécutive (pour le management)",
+      "Documenter chaque finding avec CVSS score",
+      "Fournir les preuves d'exploitation (evidence)",
+      "Proposer une remédiation pour chaque vulnérabilité",
+      "Prioriser les corrections (CRITIQUE → BASSE)",
+      "Estimer l'impact business de chaque faille",
+      "Proposer un plan de remédiation avec délais",
+      "Vérifier les corrections après patch (re-test)",
+      "Générer le rapport PDF final (PySecOps PTES)",
+      "Présenter les résultats au client",
+    ]
+  },
+] %}
+
+{% for phase in phases %}
+<div class="card" id="phase-{{ phase.id }}">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="card-title" style="margin-bottom:0">
+      {{ phase.icon }} {{ phase.nom }}
+    </div>
+    <span id="count-{{ phase.id }}" class="dim" style="font-size:12px">0/{{ phase.taches|length }}</span>
+  </div>
+  <div class="bar-wrap" style="margin-bottom:12px">
+    <div class="bar fort" id="bar-{{ phase.id }}" style="width:0%"></div>
+  </div>
+
+  {% for tache in phase.taches %}
+  <div class="check-item" onclick="toggleTache(this)"
+       style="display:flex;align-items:center;gap:12px;padding:10px 12px;
+              border-radius:6px;cursor:pointer;margin-bottom:4px;
+              border:1px solid transparent;transition:all .15s"
+       onmouseover="this.style.background='rgba(88,166,255,.04)'"
+       onmouseout="this.style.background='transparent'">
+    <div class="checkbox"
+         style="width:18px;height:18px;border:2px solid var(--border);
+                border-radius:4px;flex-shrink:0;display:flex;
+                align-items:center;justify-content:center;transition:all .15s">
+    </div>
+    <span class="tache-label" style="font-size:13px">{{ tache }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+
+<script>
+function toggleTache(el) {
+  const checkbox = el.querySelector('.checkbox');
+  const label    = el.querySelector('.tache-label');
+  const fait     = checkbox.dataset.fait === '1';
+
+  if (!fait) {
+    checkbox.dataset.fait = '1';
+    checkbox.style.background    = 'var(--green)';
+    checkbox.style.borderColor   = 'var(--green)';
+    checkbox.innerHTML = '<span style="color:white;font-size:11px;font-weight:700">✓</span>';
+    label.style.textDecoration   = 'line-through';
+    label.style.color            = 'var(--dim)';
+    el.style.borderColor         = 'rgba(63,185,80,.3)';
+    el.style.background          = 'rgba(63,185,80,.04)';
+  } else {
+    checkbox.dataset.fait = '0';
+    checkbox.style.background    = 'transparent';
+    checkbox.style.borderColor   = 'var(--border)';
+    checkbox.innerHTML           = '';
+    label.style.textDecoration   = 'none';
+    label.style.color            = 'var(--text)';
+    el.style.borderColor         = 'transparent';
+    el.style.background          = 'transparent';
+  }
+
+  mettreAJourStats();
+}
+
+function mettreAJourStats() {
+  const phases = ['recon','scanning','vuln','exploit','report'];
+  let totalFait = 0;
+  let totalAll  = 0;
+
+  phases.forEach(id => {
+    const items  = document.querySelectorAll(`#phase-${id} .check-item`);
+    const faits  = document.querySelectorAll(`#phase-${id} .checkbox[data-fait="1"]`);
+    const n      = items.length;
+    const f      = faits.length;
+    totalFait   += f;
+    totalAll    += n;
+
+    document.getElementById(`count-${id}`).textContent = `${f}/${n}`;
+    document.getElementById(`bar-${id}`).style.width   = (n ? Math.round(f/n*100) : 0) + '%';
+  });
+
+  document.getElementById('compteur').textContent      = `${totalFait}/${totalAll} tâches`;
+  document.getElementById('barre-globale').style.width = (totalAll ? Math.round(totalFait/totalAll*100) : 0) + '%';
+}
+
+mettreAJourStats();
+</script>
+{% endblock %}
