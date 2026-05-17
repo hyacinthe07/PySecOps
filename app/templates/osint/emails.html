@@ -1,0 +1,77 @@
+{% extends "layout.html" %}
+{% block titre %}Email Harvesting{% endblock %}
+{% block page_titre %}📧 Email Harvesting{% endblock %}
+{% block page_sous %}Collecte passive des emails exposés liés à un domaine{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Domaine cible</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="domaine"
+           placeholder="example.com" style="width:380px" required>
+    <button type="submit" class="btn">📧 Harvester</button>
+  </form>
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
+  {% endif %}
+</div>
+
+{% if resultat %}
+<div class="card">
+  <div class="card-title">
+    {{ resultat.total }} email(s) trouvé(s) pour
+    <span style="color:var(--blue)">{{ resultat.domaine }}</span>
+  </div>
+
+  {% if resultat.emails %}
+  <table>
+    <tr>
+      <th>Email</th>
+      <th>Source</th>
+      <th>Type</th>
+      <th>Identité</th>
+      <th>Confiance</th>
+    </tr>
+    {% for e in resultat.emails %}
+    <tr>
+      <td>
+        <code style="color:var(--blue);font-size:12px">{{ e.email }}</code>
+      </td>
+      <td class="dim" style="font-size:12px">{{ e.source }}</td>
+      <td style="font-size:12px">{{ e.type or '—' }}</td>
+      <td style="font-size:12px">
+        {% if e.prenom or e.nom %}
+          {{ e.prenom }} {{ e.nom }}
+          {% if e.poste %}
+          <span class="dim">— {{ e.poste }}</span>
+          {% endif %}
+        {% else %}
+          <span class="dim">—</span>
+        {% endif %}
+      </td>
+      <td>
+        <span class="badge {% if e.confiance >= 80 %}ok{% elif e.confiance >= 50 %}warn{% else %}info{% endif %}">
+          {{ e.confiance }}%
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="dim" style="margin-top:8px">
+    Aucun email trouvé directement. Vérifiez les patterns communs ci-dessous.
+  </p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="card-title">Patterns d'emails courants à vérifier manuellement</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+    {% for p in resultat.patterns %}
+    <code style="background:var(--bg);border:1px solid var(--border);
+                 padding:4px 12px;border-radius:4px;font-size:12px;
+                 color:var(--dim)">{{ p }}</code>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}

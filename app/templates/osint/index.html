@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block titre %}OSINT Engine{% endblock %}
+{% block page_titre %}🕵 OSINT Engine{% endblock %}
+{% block page_sous %}Reconnaissance passive — aucun paquet envoyé directement à la cible{% endblock %}
+{% block contenu %}
+<div class="tools-grid">
+  <a href="/osint/emails" class="tool-card">
+    <div class="tool-icon">📧</div>
+    <div class="tool-info">
+      <div class="tool-name">Email Harvesting</div>
+      <div class="tool-desc">Collecte les emails exposés — Hunter.io + WHOIS + pages web</div>
+    </div>
+    <span class="badge ok">ACTIF</span>
+  </a>
+  <a href="/osint/dorks" class="tool-card">
+    <div class="tool-icon">🔎</div>
+    <div class="tool-info">
+      <div class="tool-name">Google Dorks</div>
+      <div class="tool-desc">20 dorks générés — fichiers sensibles, admin, credentials, CVEs</div>
+    </div>
+    <span class="badge ok">ACTIF</span>
+  </a>
+  <a href="/osint/shodan" class="tool-card">
+    <div class="tool-icon">🌐</div>
+    <div class="tool-info">
+      <div class="tool-name">Shodan Lookup</div>
+      <div class="tool-desc">Services exposés, ports, CVEs — InternetDB gratuit ou API</div>
+    </div>
+    <span class="badge ok">ACTIF</span>
+  </a>
+  <a href="/osint/fingerprint" class="tool-card">
+    <div class="tool-icon">🔬</div>
+    <div class="tool-info">
+      <div class="tool-name">Fingerprinting avancé</div>
+      <div class="tool-desc">CMS, frameworks, WAF, CDN, cookies, headers de sécurité</div>
+    </div>
+    <span class="badge ok">ACTIF</span>
+  </a>
+</div>
+{% endblock %}

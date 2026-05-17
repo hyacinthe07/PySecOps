@@ -1,0 +1,204 @@
+{% extends "layout.html" %}
+{% block titre %}Fingerprinting avancé{% endblock %}
+{% block page_titre %}🔬 Fingerprinting avancé{% endblock %}
+{% block page_sous %}CMS, frameworks, WAF, CDN, langages, cookies, headers de sécurité{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Cible à analyser</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="url"
+           placeholder="https://example.com" style="width:420px" required>
+    <button type="submit" class="btn">🔬 Fingerprint</button>
+  </form>
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
+  {% endif %}
+</div>
+
+{% if resultat %}
+
+{# ── RÉSUMÉ ── #}
+<div class="card">
+  <div class="card-title">
+    Résultats pour
+    <span style="color:var(--blue)">{{ resultat.url }}</span>
+    <span class="dim" style="font-size:11px;font-weight:normal;margin-left:8px">
+      HTTP {{ resultat.code }}
+    </span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px">
+
+    {# CMS #}
+    <div>
+      <p class="dim" style="font-size:11px;font-weight:700;text-transform:uppercase;
+                            letter-spacing:.06em;margin-bottom:8px">CMS</p>
+      {% if resultat.cms %}
+        {% for t in resultat.cms %}
+        <span style="display:inline-block;background:rgba(188,140,255,.1);
+                     border:1px solid rgba(188,140,255,.3);color:var(--purple);
+                     padding:3px 10px;border-radius:4px;font-size:12px;margin:2px">
+          {{ t }}
+        </span>
+        {% endfor %}
+      {% else %}
+        <span class="dim" style="font-size:12px">Non détecté</span>
+      {% endif %}
+    </div>
+
+    {# Frameworks #}
+    <div>
+      <p class="dim" style="font-size:11px;font-weight:700;text-transform:uppercase;
+                            letter-spacing:.06em;margin-bottom:8px">Frameworks</p>
+      {% if resultat.frameworks %}
+        {% for t in resultat.frameworks %}
+        <span style="display:inline-block;background:rgba(88,166,255,.1);
+                     border:1px solid rgba(88,166,255,.3);color:var(--blue);
+                     padding:3px 10px;border-radius:4px;font-size:12px;margin:2px">
+          {{ t }}
+          {% if resultat.versions.get(t) %}
+          <span class="dim">v{{ resultat.versions[t] }}</span>
+          {% endif %}
+        </span>
+        {% endfor %}
+      {% else %}
+        <span class="dim" style="font-size:12px">Non détecté</span>
+      {% endif %}
+    </div>
+
+    {# Langages #}
+    <div>
+      <p class="dim" style="font-size:11px;font-weight:700;text-transform:uppercase;
+                            letter-spacing:.06em;margin-bottom:8px">Langages</p>
+      {% if resultat.langages %}
+        {% for t in resultat.langages %}
+        <span style="display:inline-block;background:rgba(63,185,80,.1);
+                     border:1px solid rgba(63,185,80,.3);color:var(--green);
+                     padding:3px 10px;border-radius:4px;font-size:12px;margin:2px">
+          {{ t }}
+          {% if resultat.versions.get(t) %}
+          <span class="dim">v{{ resultat.versions[t] }}</span>
+          {% endif %}
+        </span>
+        {% endfor %}
+      {% else %}
+        <span class="dim" style="font-size:12px">Non détecté</span>
+      {% endif %}
+    </div>
+
+    {# WAF #}
+    <div>
+      <p class="dim" style="font-size:11px;font-weight:700;text-transform:uppercase;
+                            letter-spacing:.06em;margin-bottom:8px">WAF</p>
+      {% if resultat.waf %}
+        {% for t in resultat.waf %}
+        <span style="display:inline-block;background:rgba(63,185,80,.1);
+                     border:1px solid rgba(63,185,80,.3);color:var(--green);
+                     padding:3px 10px;border-radius:4px;font-size:12px;margin:2px">
+          🛡 {{ t }}
+        </span>
+        {% endfor %}
+      {% else %}
+        <span class="badge danger" style="font-size:11px">⚠ Aucun WAF</span>
+      {% endif %}
+    </div>
+
+    {# CDN #}
+    <div>
+      <p class="dim" style="font-size:11px;font-weight:700;text-transform:uppercase;
+                            letter-spacing:.06em;margin-bottom:8px">CDN / Cloud</p>
+      {% if resultat.cdn %}
+        {% for t in resultat.cdn %}
+        <span style="display:inline-block;background:rgba(88,166,255,.1);
+                     border:1px solid rgba(88,166,255,.3);color:var(--blue);
+                     padding:3px 10px;border-radius:4px;font-size:12px;margin:2px">
+          {{ t }}
+        </span>
+        {% endfor %}
+      {% else %}
+        <span class="dim" style="font-size:12px">Non détecté</span>
+      {% endif %}
+    </div>
+
+    {# Analytics #}
+    <div>
+      <p class="dim" style="font-size:11px;font-weight:700;text-transform:uppercase;
+                            letter-spacing:.06em;margin-bottom:8px">Analytics</p>
+      {% if resultat.analytics %}
+        {% for t in resultat.analytics %}
+        <span style="display:inline-block;background:rgba(210,153,34,.1);
+                     border:1px solid rgba(210,153,34,.3);color:var(--orange);
+                     padding:3px 10px;border-radius:4px;font-size:12px;margin:2px">
+          {{ t }}
+        </span>
+        {% endfor %}
+      {% else %}
+        <span class="dim" style="font-size:12px">Non détecté</span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# ── HEADERS DE SÉCURITÉ ── #}
+<div class="card">
+  <div class="card-title">Headers de sécurité</div>
+  {% for h in resultat.securite %}
+  <div class="check-row">
+    <div class="check-nom">{{ h.header }}</div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      {% if h.present %}
+      <span class="badge ok">✔ Présent</span>
+      <code style="font-size:10px;color:var(--dim)">{{ h.valeur[:60] }}</code>
+      {% else %}
+      <span class="badge danger">✘ Absent</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ── COOKIES ── #}
+{% if resultat.cookies %}
+<div class="card">
+  <div class="card-title">Cookies ({{ resultat.cookies|length }})</div>
+  <table>
+    <tr><th>Nom</th><th>Flags</th><th>Problèmes</th></tr>
+    {% for c in resultat.cookies %}
+    <tr>
+      <td><code style="font-size:12px">{{ c.nom }}</code></td>
+      <td style="font-size:11px">
+        {% for f in c.flags %}
+        <span class="badge ok" style="font-size:10px;margin-right:3px">{{ f }}</span>
+        {% endfor %}
+      </td>
+      <td style="font-size:11px">
+        {% for m in c.manquants %}
+        <span class="badge danger" style="font-size:10px;margin-right:3px">{{ m }}</span>
+        {% endfor %}
+        {% if not c.manquants %}
+        <span class="badge ok" style="font-size:10px">✔ OK</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── ALERTES ── #}
+{% if resultat.alertes %}
+<div class="card">
+  <div class="card-title">⚠ Alertes détectées</div>
+  {% for a in resultat.alertes %}
+  <div class="check-row">
+    <div class="check-nom">{{ a.msg }}</div>
+    <span class="badge {% if a.type == 'HAUTE' %}danger{% elif a.type == 'MOYENNE' %}warn{% else %}info{% endif %}">
+      {{ a.type }}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,154 @@
+{% extends "layout.html" %}
+{% block titre %}Shodan Lookup{% endblock %}
+{% block page_titre %}🌐 Shodan Lookup{% endblock %}
+{% block page_sous %}Services exposés, ports ouverts, CVEs — via Shodan InternetDB (gratuit) ou API{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Cible à analyser</div>
+  <form method="POST">
+    <div class="form-row" style="margin-bottom:10px">
+      <input type="text" name="cible"
+             placeholder="IP ou domaine (ex: 8.8.8.8 ou example.com)"
+             style="width:380px" required>
+      <button type="submit" class="btn">🌐 Shodan</button>
+    </div>
+    <div class="form-row">
+      <input type="text" name="api_key"
+             placeholder="Clé API Shodan (optionnel — résultats complets)"
+             style="width:380px">
+    </div>
+    <p class="dim" style="font-size:12px;margin-top:8px">
+      Sans clé API : utilise Shodan InternetDB (gratuit, données limitées).<br>
+      Avec clé API : données complètes — services, bannières, historique.
+    </p>
+  </form>
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
+  {% endif %}
+</div>
+
+{% if resultat %}
+<div class="card">
+  <div class="card-title">
+    Résultats Shodan pour
+    <span style="color:var(--blue)">{{ resultat.ip }}</span>
+    <span class="dim" style="font-size:11px;font-weight:normal;margin-left:8px">
+      via {{ resultat.source }}
+    </span>
+  </div>
+
+  <div class="stats-row" style="margin-bottom:16px">
+    <div class="mini-stat">
+      <div class="dim">Ports ouverts</div>
+      <strong style="color:var(--orange)">{{ resultat.nb_ports }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">CVEs connues</div>
+      <strong style="color:var(--red)">{{ resultat.nb_vulns }}</strong>
+    </div>
+    {% if resultat.organisation %}
+    <div class="mini-stat">
+      <div class="dim">Organisation</div>
+      <strong>{{ resultat.organisation }}</strong>
+    </div>
+    {% endif %}
+    {% if resultat.pays %}
+    <div class="mini-stat">
+      <div class="dim">Pays</div>
+      <strong>{{ resultat.pays }}</strong>
+    </div>
+    {% endif %}
+  </div>
+
+  {# Ports #}
+  {% if resultat.ports %}
+  <div style="margin-bottom:14px">
+    <p class="dim" style="font-size:11px;font-weight:700;text-transform:uppercase;
+                          letter-spacing:.06em;margin-bottom:8px">Ports ouverts</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      {% for port in resultat.ports %}
+      <span style="background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);
+                   color:var(--blue);padding:3px 10px;border-radius:4px;
+                   font-family:monospace;font-size:12px">
+        {{ port }}
+      </span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# CVEs #}
+  {% if resultat.vulns %}
+  <div style="margin-bottom:14px">
+    <p class="dim" style="font-size:11px;font-weight:700;text-transform:uppercase;
+                          letter-spacing:.06em;margin-bottom:8px">CVEs détectées</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      {% for vuln in resultat.vulns %}
+      <a href="https://nvd.nist.gov/vuln/detail/{{ vuln }}"
+         target="_blank"
+         style="background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);
+                color:var(--red);padding:3px 10px;border-radius:4px;
+                font-family:monospace;font-size:11px;text-decoration:none">
+        {{ vuln }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# Hostnames #}
+  {% if resultat.hostnames %}
+  <div style="margin-bottom:14px">
+    <p class="dim" style="font-size:11px;font-weight:700;text-transform:uppercase;
+                          letter-spacing:.06em;margin-bottom:8px">Hostnames associés</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      {% for h in resultat.hostnames %}
+      <code style="background:var(--bg);border:1px solid var(--border);
+                   padding:3px 10px;border-radius:4px;font-size:12px">{{ h }}</code>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# Tags #}
+  {% if resultat.tags %}
+  <div>
+    <p class="dim" style="font-size:11px;font-weight:700;text-transform:uppercase;
+                          letter-spacing:.06em;margin-bottom:8px">Tags Shodan</p>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      {% for tag in resultat.tags %}
+      <span class="badge warn">{{ tag }}</span>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {# Services détaillés (API complète) #}
+  {% if resultat.services %}
+  <div style="margin-top:16px">
+    <p class="dim" style="font-size:11px;font-weight:700;text-transform:uppercase;
+                          letter-spacing:.06em;margin-bottom:8px">Services détaillés</p>
+    <table>
+      <tr><th>Port</th><th>Protocole</th><th>Produit</th><th>Version</th><th>Bannière</th></tr>
+      {% for svc in resultat.services %}
+      <tr>
+        <td><strong style="color:var(--blue)">{{ svc.port }}</strong></td>
+        <td>{{ svc.transport }}</td>
+        <td>{{ svc.produit or '—' }}</td>
+        <td><code style="font-size:11px">{{ svc.version or '—' }}</code></td>
+        <td style="font-size:10px;font-family:monospace;color:var(--dim);
+                   max-width:200px;overflow:hidden">
+          {{ svc.banner[:60] if svc.banner else '—' }}
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% endif %}
+
+  {% if resultat.message %}
+  <p class="dim" style="margin-top:8px;font-size:13px">ℹ {{ resultat.message }}</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

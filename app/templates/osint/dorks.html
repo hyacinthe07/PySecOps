@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+{% block titre %}Google Dorks{% endblock %}
+{% block page_titre %}🔎 Google Dorks Generator{% endblock %}
+{% block page_sous %}20 dorks générés et cliquables — fichiers sensibles, admin, credentials, infrastructure{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Domaine cible</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="domaine"
+           placeholder="example.com" style="width:380px" required>
+    <button type="submit" class="btn">🔎 Générer</button>
+  </form>
+  <p class="dim" style="font-size:12px;margin-top:8px">
+    ⚠ Ces dorks sont à utiliser uniquement sur des cibles autorisées.
+    Cliquez sur Google ou DuckDuckGo pour lancer la recherche.
+  </p>
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
+  {% endif %}
+</div>
+
+{% if resultat %}
+{% for categorie, dorks in resultat.categories.items() %}
+<div class="card">
+  <div class="card-title">
+    {{ categorie }}
+    <span class="dim" style="font-weight:normal;font-size:11px;margin-left:8px">
+      {{ dorks|length }} dork(s)
+    </span>
+  </div>
+  {% for d in dorks %}
+  <div class="check-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+    <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+      <div class="check-nom">{{ d.nom }}</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="badge {% if d.severite == 'CRITIQUE' %}danger{% elif d.severite == 'HAUTE' %}danger{% elif d.severite == 'MOYENNE' %}warn{% else %}info{% endif %}">
+          {{ d.severite }}
+        </span>
+        <a href="{{ d.url_google }}" target="_blank"
+           style="background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);
+                  color:var(--blue);padding:3px 10px;border-radius:4px;
+                  font-size:11px;text-decoration:none;white-space:nowrap">
+          Google ↗
+        </a>
+        <a href="{{ d.url_ddg }}" target="_blank"
+           style="background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);
+                  color:var(--green);padding:3px 10px;border-radius:4px;
+                  font-size:11px;text-decoration:none;white-space:nowrap">
+          DDG ↗
+        </a>
+      </div>
+    </div>
+    <code style="font-size:11px;color:var(--dim);background:#010409;
+                 border:1px solid var(--border);padding:6px 10px;
+                 border-radius:4px;width:100%;word-break:break-all">
+      {{ d.dork }}
+    </code>
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endif %}
+{% endblock %}
