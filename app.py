@@ -1,14 +1,16 @@
 from flask import Flask
-from app.blueprints.home     import home_bp
-from app.blueprints.ports    import ports_bp
-from app.blueprints.logs     import logs_bp
-from app.blueprints.secops   import secops_bp
-from app.blueprints.owasp    import owasp_bp
-from app.blueprints.network  import network_bp
-from app.blueprints.rapports import rapports_bp
+from app.blueprints.home      import home_bp
+from app.blueprints.ports     import ports_bp
+from app.blueprints.logs      import logs_bp
+from app.blueprints.secops    import secops_bp
+from app.blueprints.owasp     import owasp_bp
+from app.blueprints.network   import network_bp
+from app.blueprints.rapports  import rapports_bp
 from app.blueprints.qrcode_bp import qrcode_bp
 from app.blueprints.assistant import assistant_bp
-from app.blueprints.recon    import recon_bp
+from app.blueprints.recon     import recon_bp
+from app.blueprints.ids       import ids_bp
+from app.blueprints.audit     import audit_bp
 from app.utils.db_utils import init_db
 
 def create_app():
@@ -25,6 +27,8 @@ def create_app():
     app.register_blueprint(qrcode_bp)
     app.register_blueprint(assistant_bp)
     app.register_blueprint(recon_bp)
+    app.register_blueprint(ids_bp)
+    app.register_blueprint(audit_bp)
     return app
 
 app = create_app()

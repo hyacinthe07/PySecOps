@@ -1,0 +1,197 @@
+{% extends "layout.html" %}
+{% block titre %}Rapport d'audit PTES{% endblock %}
+{% block page_titre %}📋 Rapport d'audit PTES{% endblock %}
+{% block page_sous %}Génère un rapport d'audit professionnel structuré selon le standard PTES{% endblock %}
+
+{% block contenu %}
+{% if erreur %}
+<div class="alert-err" style="margin-bottom:16px">⚠ {{ erreur }}</div>
+{% endif %}
+
+<form method="POST" action="/audit/generer" id="audit-form">
+  <input type="hidden" name="nb_findings" id="nb-findings" value="0">
+
+  {# ── MÉTADONNÉES ── #}
+  <div class="card">
+    <div class="card-title">Informations du rapport</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <label class="dim" style="font-size:12px;display:block;margin-bottom:4px">
+          Titre du rapport
+        </label>
+        <input type="text" name="titre"
+               placeholder="Audit de sécurité — Application Web"
+               style="width:100%">
+      </div>
+      <div>
+        <label class="dim" style="font-size:12px;display:block;margin-bottom:4px">
+          Cible analysée
+        </label>
+        <input type="text" name="cible"
+               placeholder="example.com / 192.168.1.0/24"
+               style="width:100%">
+      </div>
+      <div>
+        <label class="dim" style="font-size:12px;display:block;margin-bottom:4px">
+          Client
+        </label>
+        <input type="text" name="client"
+               placeholder="Nom de l'entreprise cliente"
+               style="width:100%">
+      </div>
+      <div>
+        <label class="dim" style="font-size:12px;display:block;margin-bottom:4px">
+          Auditeur
+        </label>
+        <input type="text" name="auditeur"
+               placeholder="Votre nom — PySecOps"
+               style="width:100%" value="Hyacinthe — PySecOps">
+      </div>
+    </div>
+  </div>
+
+  {# ── FINDINGS ── #}
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:0">Vulnérabilités (Findings)</div>
+      <button type="button" class="btn" onclick="ajouterFinding()">
+        + Ajouter une vulnérabilité
+      </button>
+    </div>
+
+    <div id="findings-container">
+      <p class="dim" style="font-size:13px" id="msg-vide">
+        Cliquez sur "Ajouter une vulnérabilité" pour commencer.
+      </p>
+    </div>
+  </div>
+
+  {# ── BOUTON GÉNÉRER ── #}
+  <div style="text-align:right;margin-top:8px">
+    <button type="submit" class="btn" style="font-size:15px;padding:12px 28px">
+      📄 Générer le rapport PDF
+    </button>
+  </div>
+</form>
+
+<script>
+let nbFindings = 0;
+
+function ajouterFinding() {
+  nbFindings++;
+  document.getElementById('nb-findings').value = nbFindings;
+  document.getElementById('msg-vide').style.display = 'none';
+
+  const i = nbFindings;
+  const div = document.createElement('div');
+  div.id = `finding-${i}`;
+  div.style.cssText = 'border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:14px;background:var(--bg)';
+
+  div.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <strong style="color:var(--blue)">Vulnérabilité #${i}</strong>
+      <button type="button" onclick="supprimerFinding(${i})"
+              style="background:transparent;border:1px solid var(--red);color:var(--red);
+                     padding:3px 10px;border-radius:4px;font-size:11px;cursor:pointer">
+        Supprimer
+      </button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <label class="dim" style="font-size:11px;display:block;margin-bottom:3px">ID</label>
+        <input type="text" name="f${i}_id" placeholder="VULN-001"
+               style="width:100%" value="VULN-${String(i).padStart(3,'0')}">
+      </div>
+      <div>
+        <label class="dim" style="font-size:11px;display:block;margin-bottom:3px">Sévérité</label>
+        <select name="f${i}_severite" style="width:100%">
+          <option value="CRITIQUE">CRITIQUE</option>
+          <option value="HAUTE">HAUTE</option>
+          <option value="MOYENNE" selected>MOYENNE</option>
+          <option value="BASSE">BASSE</option>
+        </select>
+      </div>
+      <div>
+        <label class="dim" style="font-size:11px;display:block;margin-bottom:3px">CVSS Score</label>
+        <input type="text" name="f${i}_cvss" placeholder="9.8" style="width:100%">
+      </div>
+      <div>
+        <label class="dim" style="font-size:11px;display:block;margin-bottom:3px">Catégorie</label>
+        <select name="f${i}_categorie" style="width:100%">
+          <option>Injection</option>
+          <option>Authentification</option>
+          <option>Exposition de données</option>
+          <option>Mauvaise configuration</option>
+          <option>Path Traversal</option>
+          <option>Exploitation</option>
+          <option>Réseau</option>
+          <option>Cryptographie</option>
+          <option>Autre</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+      <div>
+        <label class="dim" style="font-size:11px;display:block;margin-bottom:3px">Titre</label>
+        <input type="text" name="f${i}_titre"
+               placeholder="Injection SQL sur /api/login" style="width:100%">
+      </div>
+      <div>
+        <label class="dim" style="font-size:11px;display:block;margin-bottom:3px">Composant</label>
+        <input type="text" name="f${i}_composant"
+               placeholder="API REST, Apache 2.4.49..." style="width:100%">
+      </div>
+      <div>
+        <label class="dim" style="font-size:11px;display:block;margin-bottom:3px">Localisation</label>
+        <input type="text" name="f${i}_localisation"
+               placeholder="/api/login, Port 3306..." style="width:100%">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <label class="dim" style="font-size:11px;display:block;margin-bottom:3px">Description</label>
+        <textarea name="f${i}_description" rows="3"
+          placeholder="Description technique de la vulnérabilité..."
+          style="width:100%;background:#010409;border:1px solid var(--border);
+                 color:var(--text);padding:8px;border-radius:6px;
+                 font-size:12px;resize:vertical"></textarea>
+      </div>
+      <div>
+        <label class="dim" style="font-size:11px;display:block;margin-bottom:3px">Preuve (Evidence)</label>
+        <textarea name="f${i}_evidence" rows="3"
+          placeholder="Request/Response, payload utilisé, screenshot..."
+          style="width:100%;background:#010409;border:1px solid var(--border);
+                 color:var(--text);padding:8px;border-radius:6px;
+                 font-family:monospace;font-size:11px;resize:vertical"></textarea>
+      </div>
+      <div>
+        <label class="dim" style="font-size:11px;display:block;margin-bottom:3px">Impact</label>
+        <textarea name="f${i}_impact" rows="2"
+          placeholder="Exfiltration de données, prise de contrôle..."
+          style="width:100%;background:#010409;border:1px solid var(--border);
+                 color:var(--text);padding:8px;border-radius:6px;
+                 font-size:12px;resize:vertical"></textarea>
+      </div>
+      <div>
+        <label class="dim" style="font-size:11px;display:block;margin-bottom:3px">Remédiation</label>
+        <textarea name="f${i}_remediation" rows="2"
+          placeholder="Utiliser des requêtes préparées, mettre à jour..."
+          style="width:100%;background:#010409;border:1px solid var(--border);
+                 color:var(--text);padding:8px;border-radius:6px;
+                 font-size:12px;resize:vertical"></textarea>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('findings-container').appendChild(div);
+}
+
+function supprimerFinding(i) {
+  const el = document.getElementById(`finding-${i}`);
+  if (el) el.remove();
+  if (document.getElementById('findings-container').children.length === 1) {
+    document.getElementById('msg-vide').style.display = 'block';
+  }
+}
+</script>
+{% endblock %}

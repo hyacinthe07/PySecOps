@@ -1,0 +1,247 @@
+{% extends "layout.html" %}
+{% block titre %}IDS — Détection d'intrusion{% endblock %}
+{% block page_titre %}🛡 IDS — Détection d'intrusion{% endblock %}
+{% block page_sous %}Analyse forensique réelle — Apache, Nginx, SSH — 17 signatures d'attaque{% endblock %}
+
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Importer un fichier de log</div>
+  <form method="POST" enctype="multipart/form-data">
+    <div class="form-row">
+      <input type="file" name="logfile" accept=".log,.txt" required>
+      <button type="submit" class="btn">🛡 Analyser</button>
+    </div>
+    <p class="dim" style="font-size:12px;margin-top:8px">
+      Formats supportés : Apache Combined Log, Nginx, SSH auth.log, ou log brut.
+    </p>
+  </form>
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
+  {% endif %}
+</div>
+
+{% if resultat %}
+
+{# ── SCORE DE MENACE ── #}
+{% set s = resultat.stats %}
+<div class="result-panel {{ s.couleur_menace }}">
+  <div class="result-header">
+    {% if s.couleur_menace == 'red' %}🚨{% elif s.couleur_menace == 'orange' %}⚠{% else %}✅{% endif %}
+    Niveau de menace — {{ s.niveau_menace }}
+    <span style="font-size:26px;font-weight:700;margin-left:auto">
+      {{ s.score_menace }}/100
+    </span>
+  </div>
+  <div class="bar-wrap" style="margin-top:10px">
+    <div class="bar {{ 'faible' if s.couleur_menace == 'red' else ('moyen' if s.couleur_menace == 'orange' else 'fort') }}"
+         style="width:{{ s.score_menace }}%"></div>
+  </div>
+  <div class="stats-row" style="margin-top:14px">
+    <div class="mini-stat">
+      <div class="dim">Lignes analysées</div>
+      <strong>{{ resultat.total }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">Alertes totales</div>
+      <strong style="color:var(--orange)">{{ s.total_alertes }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">CRITIQUE</div>
+      <strong style="color:var(--red)">{{ s.nb_critique }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">HAUTE</div>
+      <strong style="color:var(--orange)">{{ s.nb_haute }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">Format log</div>
+      <strong>{{ resultat.format | upper }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">Analysé le</div>
+      <strong style="font-size:11px">{{ resultat.date_analyse }}</strong>
+    </div>
+  </div>
+</div>
+
+{# ── TIMELINE D'ATTAQUE ── #}
+{% if resultat.timeline %}
+<div class="card" style="margin-top:16px">
+  <div class="card-title">
+    📅 Timeline d'attaque — {{ resultat.timeline|length }} source(s) hostile(s)
+  </div>
+  {% for t in resultat.timeline %}
+  <div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;
+              background:{% if t.severite == 'CRITIQUE' %}rgba(248,81,73,.05)
+              {% elif t.severite == 'HAUTE' %}rgba(210,153,34,.05)
+              {% else %}var(--bg){% endif %}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div>
+        <strong style="color:var(--blue);font-family:monospace">{{ t.ip }}</strong>
+        <span class="dim" style="font-size:12px;margin-left:10px">
+          {{ t.nb_events }} événements suspects
+        </span>
+        {% if t.est_apt %}
+        <span class="badge danger" style="margin-left:8px;font-size:10px">
+          ⚠ ATTAQUE MULTI-PHASES
+        </span>
+        {% endif %}
+      </div>
+      <span class="badge {% if t.severite == 'CRITIQUE' %}danger{% elif t.severite == 'HAUTE' %}danger{% else %}warn{% endif %}">
+        {{ t.severite }}
+      </span>
+    </div>
+
+    {# Progression de l'attaque #}
+    {% if t.progression %}
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+      {% for phase in t.progression %}
+      <span style="background:rgba(88,166,255,.1);border:1px solid rgba(88,166,255,.3);
+                   color:var(--blue);padding:3px 10px;border-radius:4px;font-size:11px">
+        {{ phase }}
+      </span>
+      {% if not loop.last %}
+      <span style="color:var(--dim)">→</span>
+      {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {# Événements détaillés #}
+    {% for ev in t.events[:5] %}
+    <div style="font-size:11px;font-family:monospace;color:var(--dim);
+                border-left:2px solid var(--border);padding-left:8px;margin-bottom:4px">
+      <span class="badge {% if ev.severite == 'CRITIQUE' %}danger{% elif ev.severite == 'HAUTE' %}danger{% else %}warn{% endif %}"
+            style="font-size:9px;margin-right:6px">{{ ev.id }}</span>
+      {{ ev.url[:120] }}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── BRUTE-FORCE DÉTECTÉ ── #}
+{% if resultat.bruteforce %}
+<div class="card">
+  <div class="card-title">
+    🔨 Brute-force détecté — {{ resultat.bruteforce|length }} IP(s)
+  </div>
+  <table>
+    <tr>
+      <th>Adresse IP</th>
+      <th>Tentatives</th>
+      <th>Codes</th>
+      <th>Première vue</th>
+      <th>Dernière vue</th>
+      <th>Sévérité</th>
+    </tr>
+    {% for bf in resultat.bruteforce %}
+    <tr>
+      <td><strong style="font-family:monospace;color:var(--blue)">{{ bf.ip }}</strong></td>
+      <td><strong style="color:var(--red)">{{ bf.nb_echecs }}</strong></td>
+      <td style="font-size:11px;font-family:monospace">
+        {% for code, nb in bf.codes.items() %}
+        <span style="color:var(--orange)">{{ code }}</span>×{{ nb }}
+        {% endfor %}
+      </td>
+      <td class="dim" style="font-size:11px">{{ bf.premier[:20] }}</td>
+      <td class="dim" style="font-size:11px">{{ bf.dernier[:20] }}</td>
+      <td>
+        <span class="badge {% if bf.severite == 'CRITIQUE' %}danger{% else %}warn{% endif %}">
+          {{ bf.severite }}
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── IOC ── #}
+{% set ioc = resultat.ioc %}
+<div class="card">
+  <div class="card-title">🎯 Indicators of Compromise (IOC)</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+    {# Top IPs malveillantes #}
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--dim);
+                text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
+        IPs malveillantes
+      </p>
+      {% for ip_data in ioc.ips_malveillantes[:8] %}
+      <div style="display:flex;justify-content:space-between;
+                  padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <code style="color:var(--blue)">{{ ip_data.ip }}</code>
+        <span class="badge danger" style="font-size:10px">
+          {{ ip_data.nb_alertes }} alertes
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+
+    {# Patterns détectés #}
+    <div>
+      <p style="font-size:12px;font-weight:700;color:var(--dim);
+                text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
+        Patterns d'attaque
+      </p>
+      {% for pattern, nb in ioc.patterns_detectes.items() %}
+      <div style="display:flex;justify-content:space-between;
+                  padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span>{{ pattern }}</span>
+        <span class="badge warn" style="font-size:10px">×{{ nb }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{# ── ALERTES DÉTAILLÉES ── #}
+{% if resultat.alertes %}
+<div class="card">
+  <div class="card-title">
+    ⚠ Alertes détaillées — {{ resultat.alertes|length }} événements
+    {% if resultat.alertes|length == 100 %}
+    <span class="dim" style="font-size:11px;font-weight:normal">
+      (limité aux 100 premiers)
+    </span>
+    {% endif %}
+  </div>
+  <table>
+    <tr>
+      <th>ID</th>
+      <th>Type d'attaque</th>
+      <th>IP source</th>
+      <th>Sévérité</th>
+      <th>URL / Message</th>
+    </tr>
+    {% for a in resultat.alertes[:50] %}
+    <tr>
+      <td>
+        <code style="font-size:10px;color:var(--dim)">{{ a.id }}</code>
+      </td>
+      <td style="font-size:12px">{{ a.nom }}</td>
+      <td>
+        <code style="font-family:monospace;font-size:11px;color:var(--blue)">
+          {{ a.ip or '—' }}
+        </code>
+      </td>
+      <td>
+        <span class="badge {% if a.severite == 'CRITIQUE' %}danger{% elif a.severite == 'HAUTE' %}danger{% elif a.severite == 'MOYENNE' %}warn{% else %}info{% endif %}">
+          {{ a.severite }}
+        </span>
+      </td>
+      <td style="font-size:10px;font-family:monospace;color:var(--dim);
+                 max-width:250px;overflow:hidden;word-break:break-all">
+        {{ a.url[:100] }}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
