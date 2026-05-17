@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% block titre %}Vérificateur de fuite{% endblock %}
+{% block page_titre %}🔍 Vérificateur de fuite{% endblock %}
+{% block page_sous %}Vérifie si ton mot de passe a été exposé dans une fuite de données connue (API HaveIBeenPwned){% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Analyse de fuite</div>
+  <p class="dim" style="margin-bottom:16px;font-size:13px">
+    🔒 Ton mot de passe n'est jamais envoyé. Seuls les 5 premiers caractères de son hash SHA1 sont transmis (protocole k-anonymity).
+  </p>
+  <form method="POST" class="form-row">
+    <input type="password" name="password" placeholder="Entrez votre mot de passe..." style="width:380px" required>
+    <button type="submit" class="btn">🔍 Vérifier</button>
+  </form>
+
+  {% if resultat %}
+    {% if resultat.erreur %}
+      <div class="alert-err" style="margin-top:16px">⚠ {{ resultat.erreur }}</div>
+    {% else %}
+    <div class="result-panel {{ resultat.couleur }}" style="margin-top:20px">
+      <div class="result-header">
+        {% if resultat.count == 0 %}✅{% else %}🚨{% endif %}
+        <span>{{ resultat.niveau }}</span>
+      </div>
+      <p style="margin-top:10px;font-size:14px">{{ resultat.message }}</p>
+      {% if resultat.count > 0 %}
+      <div class="stat-inline" style="margin-top:12px">
+        <span class="stat-big" style="color:var(--red)">{{ '{:,}'.format(resultat.count) }}</span>
+        <span class="dim">occurrences dans les bases compromises</span>
+      </div>
+      {% endif %}
+      <div class="dim" style="font-size:11px;margin-top:10px">Hash SHA1 prefix utilisé : <code>{{ resultat.sha1_prefix }}</code></div>
+    </div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

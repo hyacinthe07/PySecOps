@@ -1,58 +1,93 @@
-from flask import Blueprint, render_template, request
-import secrets, string, hashlib, re, base64
+"""
+PySecOps — Blueprint Crypto & SecOps
+Route handler uniquement. Toute la logique est dans utils/secops_utils.py
+"""
+from flask import Blueprint, render_template, request, jsonify
+from app.utils.secops_utils import (
+    verifier_fuite_password,
+    detecter_hash,
+    generer_secret,
+    analyser_mot_de_passe,
+    convertir,
+    analyser_phishing,
+)
 
 secops_bp = Blueprint('secops', __name__)
 
-def generer_mdp(n=16):
-    alpha = string.ascii_letters + string.digits + string.punctuation
-    return ''.join(secrets.choice(alpha) for _ in range(n))
-
-def hacher(texte):
-    b = texte.encode('utf-8')
-    return {'md5':hashlib.md5(b).hexdigest(),'sha1':hashlib.sha1(b).hexdigest(),'sha256':hashlib.sha256(b).hexdigest()}
-
-def verifier_force(mdp):
-    criteres = {
-        'Longueur ≥ 8':   len(mdp)>=8,
-        'Longueur ≥ 12':  len(mdp)>=12,
-        'Majuscule':      bool(re.search(r'[A-Z]',mdp)),
-        'Minuscule':      bool(re.search(r'[a-z]',mdp)),
-        'Chiffre':        bool(re.search(r'\d',mdp)),
-        'Symbole':        bool(re.search(r'[!@#$%^&*(),.?\":{}|<>]',mdp)),
-        'Pas commun':     mdp.lower() not in ['password','123456','azerty','admin','qwerty'],
-    }
-    score = sum(criteres.values())
-    niveau = 'FORT' if score >= 6 else ('MOYEN' if score >= 4 else 'FAIBLE')
-    return {'criteres':criteres,'score':score,'max':len(criteres),'niveau':niveau}
-
-def conv_base64(texte, action):
-    try:
-        if action == 'encode':
-            return base64.b64encode(texte.encode()).decode()
-        return base64.b64decode(texte.encode()).decode()
-    except Exception as e:
-        return f"Erreur : {e}"
-
-@secops_bp.route('/secops', methods=['GET', 'POST'])
+@secops_bp.route('/secops')
 def secops():
+    return render_template('secops/index.html', active='secops')
+
+# ── 1. FUITE MOT DE PASSE
+@secops_bp.route('/secops/fuite', methods=['GET', 'POST'])
+def fuite():
     resultat = None
-    action_active = None
     if request.method == 'POST':
-        action_active = request.form.get('action')
-        if action_active == 'generer':
-            try:
-                n = max(8, min(64, int(request.form.get('longueur', 16))))
-                resultat = {'mdp': generer_mdp(n)}
-            except ValueError:
-                resultat = {'erreur': 'Longueur invalide.'}
-        elif action_active == 'hash':
-            t = request.form.get('texte_hash','').strip()
-            resultat = hacher(t) if t else {'erreur':'Texte vide.'}
-        elif action_active == 'force':
-            m = request.form.get('mdp_test','').strip()
-            resultat = verifier_force(m) if m else {'erreur':'Vide.'}
-        elif action_active == 'base64':
-            t = request.form.get('texte_b64','').strip()
-            s = request.form.get('sens_b64','encode')
-            resultat = {'resultat': conv_base64(t,s)} if t else {'erreur':'Texte vide.'}
-    return render_template('secops.html', active='secops', resultat=resultat, action_active=action_active)
+        mdp = request.form.get('password', '').strip()
+        if mdp:
+            resultat = verifier_fuite_password(mdp)
+    return render_template('secops/fuite.html', active='secops', resultat=resultat)
+
+# ── 2. DÉTECTEUR DE HASH
+@secops_bp.route('/secops/hash-detect', methods=['GET', 'POST'])
+def hash_detect():
+    resultat = None
+    if request.method == 'POST':
+        valeur = request.form.get('hash_valeur', '').strip()
+        if valeur:
+            resultat = detecter_hash(valeur)
+    return render_template('secops/hash_detect.html', active='secops', resultat=resultat)
+
+# ── 3. GÉNÉRATEUR DE SECRETS
+@secops_bp.route('/secops/keygen', methods=['GET', 'POST'])
+def keygen():
+    resultat = None
+    if request.method == 'POST':
+        type_secret = request.form.get('type_secret', 'token')
+        longueur = int(request.form.get('longueur', 32))
+        resultat = generer_secret(type_secret, longueur)
+    return render_template('secops/keygen.html', active='secops', resultat=resultat)
+
+# ── API JSON pour régénération instantanée (bouton "régénérer")
+@secops_bp.route('/api/keygen')
+def api_keygen():
+    type_secret = request.args.get('type', 'token')
+    longueur = int(request.args.get('longueur', 32))
+    return jsonify(generer_secret(type_secret, longueur))
+
+# ── 5. ANALYSE MOT DE PASSE
+@secops_bp.route('/secops/password-check', methods=['GET', 'POST'])
+def password_check():
+    resultat = None
+    if request.method == 'POST':
+        mdp = request.form.get('mdp', '')
+        resultat = analyser_mot_de_passe(mdp)
+    return render_template('secops/password_check.html', active='secops', resultat=resultat)
+
+# ── API JSON temps réel (appel depuis JS à chaque frappe)
+@secops_bp.route('/api/password-check')
+def api_password_check():
+    mdp = request.args.get('mdp', '')
+    return jsonify(analyser_mot_de_passe(mdp))
+
+# ── 6. ENCODEUR MULTI-FORMAT
+@secops_bp.route('/secops/encoder', methods=['GET', 'POST'])
+def encoder():
+    resultat = None
+    if request.method == 'POST':
+        texte   = request.form.get('texte', '')
+        format_ = request.form.get('format', 'base64')
+        sens    = request.form.get('sens', 'encode')
+        if texte:
+            resultat = convertir(texte, format_, sens)
+    return render_template('secops/encoder.html', active='secops', resultat=resultat)
+
+# ── 10. DÉTECTEUR PHISHING
+@secops_bp.route('/secops/phishing', methods=['GET', 'POST'])
+def phishing():
+    resultat = None
+    if request.method == 'POST':
+        url = request.form.get('url', '').strip()
+        if url:
+            resultat = analyser_phishing(url)
+    return render_template('secops/phishing.html', active='secops', resultat=resultat)

@@ -1,0 +1,38 @@
+{% extends "layout.html" %}
+{% block titre %}Détecteur de hash{% endblock %}
+{% block page_titre %}🧬 Détecteur de hash{% endblock %}
+{% block page_sous %}Identifie automatiquement le type d'un hash et son niveau de sécurité{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Coller un hash à analyser</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="hash_valeur" placeholder="ex: 5f4dcc3b5aa765d61d8327deb882cf99" style="width:480px" required>
+    <button type="submit" class="btn">🧬 Analyser</button>
+  </form>
+
+  {% if resultat %}
+  <div style="margin-top:20px">
+    {% if not resultat.detecte %}
+      <div class="alert-err">{{ resultat.message }}</div>
+    {% else %}
+    <div class="detect-card">
+      <div class="detect-header">
+        <span class="detect-type">{{ resultat.type }}</span>
+        <span class="badge {% if 'TRÈS FORT' in resultat.securite %}ok{% elif 'FORT' in resultat.securite %}info{% elif 'MOYEN' in resultat.securite %}warn{% else %}danger{% endif %}">
+          {{ resultat.securite }}
+        </span>
+      </div>
+      <div class="detect-body">
+        <div class="detect-row"><span class="dim">Type détecté</span><strong>{{ resultat.type }}</strong></div>
+        <div class="detect-row"><span class="dim">Longueur</span><strong>{{ resultat.longueur }} caractères</strong></div>
+        <div class="detect-row"><span class="dim">Usage courant</span><span>{{ resultat.usage }}</span></div>
+        {% if resultat.ambigue %}
+        <div class="detect-row"><span class="dim">Ambiguïté</span><span class="warn-text">Pourrait aussi être : {{ resultat.candidats[1:] | join(', ') }}</span></div>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

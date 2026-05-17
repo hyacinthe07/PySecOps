@@ -1,0 +1,42 @@
+{% extends "layout.html" %}
+{% block titre %}Détecteur de phishing{% endblock %}
+{% block page_titre %}🎣 Détecteur de phishing{% endblock %}
+{% block page_sous %}Analyse une URL et détecte les signes de tentative d'hameçonnage{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">URL à analyser</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="url" placeholder="https://exemple-suspect.xyz/login/verify-account" style="width:480px" required>
+    <button type="submit" class="btn">🎣 Analyser</button>
+  </form>
+
+  {% if resultat %}
+  <div class="result-panel {{ resultat.couleur }}" style="margin-top:20px">
+    <div class="result-header">
+      {% if resultat.score >= 70 %}🚨{% elif resultat.score >= 40 %}⚠{% else %}✅{% endif %}
+      <span>{{ resultat.niveau }}</span>
+      <span style="font-size:22px;font-weight:700;margin-left:auto">{{ resultat.score }}/100</span>
+    </div>
+    <div class="bar-wrap" style="margin-top:10px">
+      <div class="bar {% if resultat.score >= 70 %}faible{% elif resultat.score >= 40 %}moyen{% else %}fort{% endif %}"
+           style="width:{{ resultat.score }}%"></div>
+    </div>
+    <div class="dim" style="font-size:12px;margin-top:8px">Domaine analysé : <code>{{ resultat.domaine }}</code></div>
+  </div>
+
+  {% if resultat.alertes %}
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">{{ resultat.nb_alertes }} alerte(s) détectée(s)</div>
+    {% for alerte in resultat.alertes %}
+    <div class="check-row">
+      <div class="check-nom">{{ alerte.msg }}</div>
+      <span class="badge {% if alerte.type == 'CRITIQUE' %}danger{% elif alerte.type == 'HAUTE' %}danger{% elif alerte.type == 'MOYENNE' %}warn{% else %}info{% endif %}">
+        {{ alerte.type }}
+      </span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

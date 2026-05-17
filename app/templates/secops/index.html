@@ -1,0 +1,56 @@
+{% extends "layout.html" %}
+{% block titre %}Crypto & SecOps{% endblock %}
+{% block page_titre %}Crypto & SecOps{% endblock %}
+{% block page_sous %}Plateforme d'outils cryptographiques et de sécurité opérationnelle{% endblock %}
+{% block contenu %}
+<div class="tools-grid">
+  <a href="/secops/password-check" class="tool-card">
+    <div class="tool-icon">🛡</div>
+    <div class="tool-info">
+      <div class="tool-name">Analyse de mot de passe</div>
+      <div class="tool-desc">Score, temps de cassage, conseils</div>
+    </div>
+    <span class="tool-badge ok">ACTIF</span>
+  </a>
+  <a href="/secops/fuite" class="tool-card">
+    <div class="tool-icon">🔍</div>
+    <div class="tool-info">
+      <div class="tool-name">Vérificateur de fuite</div>
+      <div class="tool-desc">Have I Been Pwned — API en temps réel</div>
+    </div>
+    <span class="tool-badge ok">ACTIF</span>
+  </a>
+  <a href="/secops/hash-detect" class="tool-card">
+    <div class="tool-icon">🧬</div>
+    <div class="tool-info">
+      <div class="tool-name">Détecteur de hash</div>
+      <div class="tool-desc">MD5, SHA1, SHA256, bcrypt, NTLM...</div>
+    </div>
+    <span class="tool-badge ok">ACTIF</span>
+  </a>
+  <a href="/secops/keygen" class="tool-card">
+    <div class="tool-icon">🔑</div>
+    <div class="tool-info">
+      <div class="tool-name">Générateur de secrets</div>
+      <div class="tool-desc">AES, JWT, Flask/Django keys, UUID</div>
+    </div>
+    <span class="tool-badge ok">ACTIF</span>
+  </a>
+  <a href="/secops/encoder" class="tool-card">
+    <div class="tool-icon">⇄</div>
+    <div class="tool-info">
+      <div class="tool-name">Encodeur multi-format</div>
+      <div class="tool-desc">Base64, Hex, URL, ROT13, Binaire, Morse</div>
+    </div>
+    <span class="tool-badge ok">ACTIF</span>
+  </a>
+  <a href="/secops/phishing" class="tool-card">
+    <div class="tool-icon">🎣</div>
+    <div class="tool-info">
+      <div class="tool-name">Détecteur de phishing</div>
+      <div class="tool-desc">Analyse d'URL et score de risque</div>
+    </div>
+    <span class="tool-badge ok">ACTIF</span>
+  </a>
+</div>
+{% endblock %}

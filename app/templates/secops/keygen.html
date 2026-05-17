@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+{% block titre %}Générateur de secrets{% endblock %}
+{% block page_titre %}🔑 Générateur de secrets{% endblock %}
+{% block page_sous %}Génère des clés, tokens, secrets Flask/Django et API keys cryptographiquement sécurisés{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Type de secret</div>
+  <form method="POST" class="form-row" id="keygen-form">
+    <select name="type_secret" id="type_secret" onchange="regenerer()">
+      <option value="aes128">Clé AES-128</option>
+      <option value="aes256">Clé AES-256</option>
+      <option value="token" selected>Token sécurisé</option>
+      <option value="uuid">UUID v4</option>
+      <option value="flask">Secret Flask</option>
+      <option value="django">Secret Django</option>
+      <option value="apikey">API Key</option>
+      <option value="jwt">Secret JWT</option>
+      <option value="mdp">Mot de passe fort</option>
+    </select>
+    <button type="submit" class="btn">⚡ Générer</button>
+    <button type="button" class="btn" style="background:var(--border);color:var(--text)" onclick="regenerer()">🔄 Régénérer</button>
+  </form>
+
+  <div id="keygen-result" style="margin-top:20px">
+  {% if resultat %}
+    {% if resultat.erreur %}
+      <div class="alert-err">{{ resultat.erreur }}</div>
+    {% else %}
+    <div class="key-display">
+      <div class="key-meta">
+        <span class="dim">{{ resultat.description }}</span>
+        <span class="badge {% if resultat.force == 'EXCELLENT' %}ok{% elif resultat.force == 'FORT' %}info{% else %}warn{% endif %}">
+          {{ resultat.force }}
+        </span>
+      </div>
+      <div class="key-value" id="key-val">{{ resultat.valeur }}</div>
+      <div class="key-footer">
+        <span class="dim">{{ resultat.longueur }} caractères · {{ resultat.entropie_bits }} bits d'entropie</span>
+        <button class="btn-copy" onclick="copier('key-val')">📋 Copier</button>
+      </div>
+    </div>
+    {% endif %}
+  {% endif %}
+  </div>
+</div>
+
+<script>
+async function regenerer() {
+  const type = document.getElementById('type_secret').value;
+  const r = await fetch(`/api/keygen?type=${type}`);
+  const data = await r.json();
+  if (data.valeur) {
+    document.getElementById('keygen-result').innerHTML = `
+      <div class="key-display">
+        <div class="key-meta"><span class="dim">${data.description}</span>
+          <span class="badge ok">${data.force}</span></div>
+        <div class="key-value" id="key-val">${data.valeur}</div>
+        <div class="key-footer">
+          <span class="dim">${data.longueur} caractères · ${data.entropie_bits} bits d'entropie</span>
+          <button class="btn-copy" onclick="copier('key-val')">📋 Copier</button>
+        </div>
+      </div>`;
+  }
+}
+
+function copier(id) {
+  const val = document.getElementById(id)?.innerText;
+  if (val) {
+    navigator.clipboard.writeText(val);
+    event.target.innerText = '✅ Copié !';
+    setTimeout(() => event.target.innerText = '📋 Copier', 1500);
+  }
+}
+</script>
+{% endblock %}
