@@ -189,3 +189,19 @@ tr:hover td{background:rgba(88,166,255,.04)}
   transition: all .15s;
 }
 .chip:hover { background: rgba(88,166,255,.1); border-color: var(--blue); }
+
+/* ─── SIDEBAR SCROLLABLE ─── */
+.sidebar {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
