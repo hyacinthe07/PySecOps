@@ -1,0 +1,204 @@
+{% extends "layout.html" %}
+{% block titre %}Scan complet{% endblock %}
+{% block page_titre %}🔬 Scan complet{% endblock %}
+{% block page_sous %}Fingerprinting multi-couches — ports, CVEs, technologies, secrets, attack surface{% endblock %}
+{% block contenu %}
+
+<div class="card">
+  <div class="card-title">Cible à analyser</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="cible"
+           placeholder="IP ou domaine (ex: 192.168.1.1 ou example.com)"
+           style="width:420px" required>
+    <button type="submit" class="btn">🔬 Lancer le scan</button>
+  </form>
+  <p class="dim" style="font-size:12px;margin-top:8px">
+    ⚠ Utilisez uniquement sur des cibles que vous êtes autorisé à analyser.
+  </p>
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
+  {% endif %}
+</div>
+
+{% if resultat %}
+
+{# ── ATTACK SURFACE SCORE ── #}
+{% set as = resultat.attack_surface %}
+<div class="result-panel {{ as.couleur }}">
+  <div class="result-header">
+    {% if as.couleur == 'red' %}🚨{% elif as.couleur == 'orange' %}⚠{% else %}✅{% endif %}
+    Attack Surface Score — {{ as.niveau }}
+    <span style="font-size:26px;font-weight:700;margin-left:auto">{{ as.score }}/100</span>
+  </div>
+  <div class="bar-wrap" style="margin-top:10px">
+    <div class="bar {{ 'faible' if as.couleur == 'red' else ('moyen' if as.couleur == 'orange' else 'fort') }}"
+         style="width:{{ as.score }}%"></div>
+  </div>
+  <div class="stats-row" style="margin-top:14px">
+    <div class="mini-stat"><div class="dim">IP</div><strong>{{ resultat.ip }}</strong></div>
+    <div class="mini-stat"><div class="dim">Ports ouverts</div><strong style="color:var(--orange)">{{ resultat.nb_ports }}</strong></div>
+    <div class="mini-stat"><div class="dim">CVEs trouvées</div><strong style="color:var(--red)">{{ resultat.nb_cves }}</strong></div>
+    <div class="mini-stat"><div class="dim">Secrets exposés</div><strong style="color:var(--red)">{{ resultat.nb_secrets }}</strong></div>
+    <div class="mini-stat"><div class="dim">Scanné le</div><strong style="font-size:11px">{{ resultat.date_scan }}</strong></div>
+  </div>
+</div>
+
+{# ── VECTEURS D'ATTAQUE ── #}
+{% if as.vecteurs %}
+<div class="card" style="margin-top:16px">
+  <div class="card-title">🎯 Vecteurs d'attaque identifiés ({{ as.nb_vecteurs }})</div>
+  {% for v in as.vecteurs %}
+  <div class="check-row">
+    <div>
+      <div class="check-nom">{{ v.etape }}</div>
+      <div class="check-conseil">{{ v.detail }}</div>
+      {% if v.url %}<a href="{{ v.url }}" target="_blank" style="font-size:11px;color:var(--blue)">→ Détails CVE</a>{% endif %}
+    </div>
+    <span class="badge {% if v.risque == 'CRITIQUE' %}danger{% elif v.risque == 'HAUTE' %}danger{% elif v.risque == 'MOYENNE' %}warn{% else %}info{% endif %}">
+      {{ v.risque }}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── RECOMMANDATIONS ── #}
+{% if as.recommandations %}
+<div class="card">
+  <div class="card-title">✅ Plan de remédiation prioritaire</div>
+  {% for r in as.recommandations %}
+  <div class="check-row">
+    <div>
+      <div class="check-nom">{{ r.action }}</div>
+      <div class="check-conseil">{{ r.detail }}</div>
+    </div>
+    <span class="badge {% if r.priorite == 'CRITIQUE' %}danger{% else %}warn{% endif %}">
+      {{ r.priorite }}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── PORTS OUVERTS ── #}
+<div class="card">
+  <div class="card-title">🔌 Ports ouverts — {{ resultat.nb_ports }} détectés</div>
+  {% if resultat.ports %}
+  <table>
+    <tr><th>Port</th><th>Service</th><th>Version détectée</th><th>Risque</th><th>Bannière</th></tr>
+    {% for p in resultat.ports %}
+    <tr>
+      <td><strong>{{ p.port }}</strong></td>
+      <td>{{ p.service }}</td>
+      <td><code style="font-size:11px">{{ p.version or '—' }}</code></td>
+      <td>
+        {% if p.dangereux %}
+        <span class="badge {% if p.risque == 'CRITIQUE' %}danger{% else %}warn{% endif %}">{{ p.risque }}</span>
+        {% else %}
+        <span class="badge ok">OK</span>
+        {% endif %}
+      </td>
+      <td style="font-size:11px;font-family:monospace;color:var(--dim);max-width:200px;overflow:hidden">
+        {{ p.banner[:60] if p.banner else '—' }}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="dim">Aucun port ouvert détecté.</p>
+  {% endif %}
+</div>
+
+{# ── CVEs TROUVÉES ── #}
+{% if resultat.cves %}
+<div class="card">
+  <div class="card-title">💀 CVEs détectées — {{ resultat.nb_cves }} vulnérabilités</div>
+  <table>
+    <tr><th>CVE ID</th><th>Service</th><th>CVSS</th><th>Sévérité</th><th>Description</th></tr>
+    {% for cve in resultat.cves %}
+    <tr>
+      <td>
+        <a href="{{ cve.url }}" target="_blank"
+           style="color:var(--blue);font-family:monospace;font-size:12px">
+          {{ cve.id }}
+        </a>
+      </td>
+      <td style="font-size:12px">{{ cve.service_associe }} ({{ cve.port_associe }})</td>
+      <td>
+        <strong style="color:{% if cve.score >= 9 %}var(--red){% elif cve.score >= 7 %}var(--orange){% else %}var(--text){% endif %}">
+          {{ cve.score }}
+        </strong>
+      </td>
+      <td>
+        <span class="badge {% if cve.severite in ('CRITICAL','CRITIQUE') %}danger{% elif cve.severite in ('HIGH','HAUTE') %}danger{% elif cve.severite in ('MEDIUM','MOYENNE') %}warn{% else %}info{% endif %}">
+          {{ cve.severite }}
+        </span>
+      </td>
+      <td style="font-size:11px;color:var(--dim)">{{ cve.desc[:100] }}…</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── TECHNOLOGIES ── #}
+{% if resultat.technologies and resultat.technologies.technologies %}
+<div class="card">
+  <div class="card-title">🖥 Technologies détectées</div>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px">
+    {% for tech, version in resultat.technologies.technologies.items() %}
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-size:12px">
+      <strong style="color:var(--blue)">{{ tech }}</strong>
+      {% if version and version != 'détecté' %}
+      <span class="dim"> v{{ version }}</span>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if resultat.technologies.headers_securite %}
+  <div class="card-title" style="margin-top:12px">Headers de sécurité</div>
+  {% for header, valeur in resultat.technologies.headers_securite.items() %}
+  <div class="detect-row">
+    <span class="dim">{{ header }}</span>
+    {% if valeur %}
+    <span class="badge ok" style="font-size:10px">✔ Présent</span>
+    {% else %}
+    <span class="badge danger" style="font-size:10px">✘ Absent</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── SECRETS EXPOSÉS ── #}
+{% if resultat.secrets %}
+<div class="card">
+  <div class="card-title">🔑 Fichiers & endpoints sensibles exposés ({{ resultat.nb_secrets }})</div>
+  <table>
+    <tr><th>Chemin</th><th>Code HTTP</th><th>Taille</th><th>Sévérité</th><th>Description</th></tr>
+    {% for s in resultat.secrets %}
+    <tr>
+      <td>
+        <a href="{{ s.url }}" target="_blank"
+           style="color:var(--blue);font-family:monospace;font-size:12px">
+          {{ s.chemin }}
+        </a>
+      </td>
+      <td><span style="color:var(--green)">{{ s.code }}</span></td>
+      <td class="dim" style="font-size:11px">{{ s.taille }} octets</td>
+      <td>
+        <span class="badge {% if s.severite == 'CRITIQUE' %}danger{% elif s.severite == 'HAUTE' %}danger{% elif s.severite == 'MOYENNE' %}warn{% else %}info{% endif %}">
+          {{ s.severite }}
+        </span>
+      </td>
+      <td style="font-size:11px;color:var(--dim)">{{ s.description }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

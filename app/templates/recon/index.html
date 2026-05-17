@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block titre %}Deep Recon Engine{% endblock %}
+{% block page_titre %}🎯 Deep Recon Engine{% endblock %}
+{% block page_sous %}Reconnaissance complète — fingerprinting, CVE, secrets exposés, subdomains{% endblock %}
+{% block contenu %}
+<div class="tools-grid">
+  <a href="/recon/scan" class="tool-card">
+    <div class="tool-icon">🔬</div>
+    <div class="tool-info">
+      <div class="tool-name">Scan complet</div>
+      <div class="tool-desc">Ports + CVEs + technologies + secrets + attack surface</div>
+    </div>
+    <span class="badge ok">ACTIF</span>
+  </a>
+  <a href="/recon/subdomains" class="tool-card">
+    <div class="tool-icon">🌐</div>
+    <div class="tool-info">
+      <div class="tool-name">Subdomain Enumeration</div>
+      <div class="tool-desc">crt.sh + brute-force DNS — trouve tous les sous-domaines</div>
+    </div>
+    <span class="badge ok">ACTIF</span>
+  </a>
+  <a href="/recon/secrets" class="tool-card">
+    <div class="tool-icon">🔑</div>
+    <div class="tool-info">
+      <div class="tool-name">Secrets & Fichiers exposés</div>
+      <div class="tool-desc">Détecte .env, .git, backups SQL, configs exposées</div>
+    </div>
+    <span class="badge ok">ACTIF</span>
+  </a>
+  <a href="/recon/cve" class="tool-card">
+    <div class="tool-icon">💀</div>
+    <div class="tool-info">
+      <div class="tool-name">CVE Lookup</div>
+      <div class="tool-desc">Recherche de vulnérabilités via API NIST NVD officielle</div>
+    </div>
+    <span class="badge ok">ACTIF</span>
+  </a>
+</div>
+{% endblock %}

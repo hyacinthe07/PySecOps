@@ -8,15 +8,13 @@ from app.blueprints.network  import network_bp
 from app.blueprints.rapports import rapports_bp
 from app.blueprints.qrcode_bp import qrcode_bp
 from app.blueprints.assistant import assistant_bp
+from app.blueprints.recon    import recon_bp
 from app.utils.db_utils import init_db
 
 def create_app():
     app = Flask(__name__, template_folder='app/templates', static_folder='app/static')
     app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
-
-    # Initialiser la base de données au démarrage
     init_db()
-
     app.register_blueprint(home_bp)
     app.register_blueprint(ports_bp)
     app.register_blueprint(logs_bp)
@@ -26,6 +24,7 @@ def create_app():
     app.register_blueprint(rapports_bp)
     app.register_blueprint(qrcode_bp)
     app.register_blueprint(assistant_bp)
+    app.register_blueprint(recon_bp)
     return app
 
 app = create_app()

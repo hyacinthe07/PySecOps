@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% block titre %}Subdomain Enumeration{% endblock %}
+{% block page_titre %}🌐 Subdomain Enumeration{% endblock %}
+{% block page_sous %}Découverte des sous-domaines via Certificate Transparency + brute-force DNS{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Domaine cible</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="domaine" placeholder="example.com" style="width:380px" required>
+    <button type="submit" class="btn">🌐 Énumérer</button>
+  </form>
+  {% if erreur %}<div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>{% endif %}
+</div>
+
+{% if resultat %}
+<div class="card">
+  <div class="card-title">
+    {{ resultat.total }} sous-domaine(s) trouvé(s) pour
+    <span style="color:var(--blue)">{{ resultat.domaine }}</span>
+  </div>
+  {% if resultat.subdomains %}
+  <table>
+    <tr><th>Sous-domaine</th><th>Adresse IP</th><th>Statut</th></tr>
+    {% for sub in resultat.subdomains %}
+    <tr>
+      <td>
+        <a href="http://{{ sub.fqdn }}" target="_blank"
+           style="color:var(--blue);font-family:monospace;font-size:12px">
+          {{ sub.fqdn }}
+        </a>
+      </td>
+      <td><code style="font-size:12px">{{ sub.ip }}</code></td>
+      <td>
+        {% if sub.ip != 'non résolu' %}
+        <span class="badge ok">RÉSOLU</span>
+        {% else %}
+        <span class="badge warn">NON RÉSOLU</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="dim">Aucun sous-domaine trouvé.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}

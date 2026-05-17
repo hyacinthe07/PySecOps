@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+{% block titre %}CVE Lookup{% endblock %}
+{% block page_titre %}💀 CVE Lookup{% endblock %}
+{% block page_sous %}Recherche de vulnérabilités connues via l'API officielle NIST NVD{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Recherche CVE</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="keyword"
+           placeholder="ex: Apache 2.4.49  |  OpenSSH 7.4  |  MySQL 5.7"
+           style="width:380px" required>
+    <select name="nb" style="width:120px">
+      <option value="5">5 résultats</option>
+      <option value="10" selected>10 résultats</option>
+      <option value="20">20 résultats</option>
+    </select>
+    <button type="submit" class="btn">💀 Rechercher</button>
+  </form>
+  {% if erreur %}<div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>{% endif %}
+</div>
+
+{% if resultat %}
+<div class="card">
+  <div class="card-title">
+    {{ resultat.total }} CVE(s) trouvée(s) pour
+    <span style="color:var(--blue)">{{ resultat.keyword }}</span>
+  </div>
+  {% if resultat.cves %}
+  <table>
+    <tr><th>CVE ID</th><th>CVSS</th><th>Sévérité</th><th>Publié</th><th>Description</th></tr>
+    {% for cve in resultat.cves %}
+    <tr>
+      <td>
+        <a href="{{ cve.url }}" target="_blank"
+           style="color:var(--blue);font-family:monospace;font-size:12px;white-space:nowrap">
+          {{ cve.id }}
+        </a>
+      </td>
+      <td>
+        <strong style="color:{% if cve.score >= 9 %}var(--red){% elif cve.score >= 7 %}var(--orange){% elif cve.score >= 4 %}var(--blue){% else %}var(--dim){% endif %}">
+          {{ cve.score }}
+        </strong>
+      </td>
+      <td>
+        <span class="badge {% if cve.severite in ('CRITICAL','CRITIQUE') %}danger{% elif cve.severite in ('HIGH','HAUTE') %}danger{% elif cve.severite in ('MEDIUM','MOYENNE') %}warn{% else %}info{% endif %}">
+          {{ cve.severite }}
+        </span>
+      </td>
+      <td class="dim" style="font-size:11px;white-space:nowrap">{{ cve.published }}</td>
+      <td style="font-size:11px;color:var(--dim)">{{ cve.desc[:120] }}{% if cve.desc|length > 120 %}…{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="dim" style="margin-top:8px">Aucune CVE trouvée pour ce service. Essayez avec le nom + version exact.</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
