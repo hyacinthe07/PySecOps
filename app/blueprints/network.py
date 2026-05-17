@@ -1,12 +1,8 @@
-"""
-PySecOps — Blueprint Network Intelligence
-Routes pour WHOIS, DNS et IP Intelligence.
-"""
 from flask import Blueprint, render_template, request
+from app.utils.stats_utils import incrementer
 from app.utils.network_utils import analyser_whois, analyser_dns, analyser_ip
 
 network_bp = Blueprint('network', __name__)
-
 
 @network_bp.route('/whois', methods=['GET', 'POST'])
 def whois():
@@ -22,9 +18,11 @@ def whois():
             whois_data = analyser_whois(domaine)
             dns_data   = analyser_dns(domaine)
             if "erreur" in whois_data and "erreur" in dns_data:
-                erreur = whois_data["erreur"]
+                erreur     = whois_data["erreur"]
                 whois_data = None
                 dns_data   = None
+            else:
+                incrementer("whois", domaine)
 
     return render_template(
         'network/whois.html',
@@ -33,7 +31,6 @@ def whois():
         dns_data=dns_data,
         erreur=erreur
     )
-
 
 @network_bp.route('/ip-intel', methods=['GET', 'POST'])
 def ip_intel():
@@ -49,6 +46,8 @@ def ip_intel():
             if "erreur" in resultat:
                 erreur   = resultat["erreur"]
                 resultat = None
+            else:
+                incrementer("ip_intel", cible)
 
     return render_template(
         'network/ip_intel.html',

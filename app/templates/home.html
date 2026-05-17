@@ -1,22 +1,125 @@
 {% extends "layout.html" %}
-{% block titre %}Overview{% endblock %}
-{% block page_titre %}Tableau de bord{% endblock %}
-{% block page_sous %}Vue d'ensemble de la plateforme PySecOps v2{% endblock %}
+{% block titre %}SOC Dashboard{% endblock %}
+{% block page_titre %}Security Operations Dashboard{% endblock %}
+{% block page_sous %}Vue d'ensemble temps réel de la plateforme PySecOps v2.0{% endblock %}
+
 {% block contenu %}
-<div class="stats-grid">
-  <div class="stat-card"><div class="stat-val">{{ stats.modules }}</div><div class="stat-lbl">Modules actifs</div></div>
-  <div class="stat-card"><div class="stat-val" style="color:var(--green)">v{{ stats.version }}</div><div class="stat-lbl">Version</div></div>
-  <div class="stat-card"><div class="stat-val" style="color:var(--green)">●</div><div class="stat-lbl">{{ stats.status }}</div></div>
+
+{# ── STATS PRINCIPALES ── #}
+<div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(160px, 1fr))">
+  <div class="stat-card">
+    <div class="stat-val">{{ stats.total }}</div>
+    <div class="stat-lbl">Analyses totales</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--green)">{{ stats.modules }}</div>
+    <div class="stat-lbl">Modules actifs</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--orange)">{{ stats.ports }}</div>
+    <div class="stat-lbl">Scans de ports</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--red)">{{ stats.owasp }}</div>
+    <div class="stat-lbl">Audits OWASP</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--blue)">{{ stats.whois }}</div>
+    <div class="stat-lbl">Lookups WHOIS</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--purple)">{{ stats.ssl }}</div>
+    <div class="stat-lbl">Scans SSL</div>
+  </div>
 </div>
-<div class="card">
-  <div class="card-title">Modules disponibles</div>
-  <table>
-    <tr><th>Module</th><th>Description</th><th>Statut</th></tr>
-    <tr><td><a href="/ports"  class="lien">Port Scanner</a></td><td>Scan TCP multithreadé — 1024 ports</td><td><span class="badge ok">ACTIF</span></td></tr>
-    <tr><td><a href="/logs"   class="lien">Log Analyzer</a></td><td>Détection d'IPs suspectes dans vos logs</td><td><span class="badge ok">ACTIF</span></td></tr>
-    <tr><td><a href="/secops" class="lien">Crypto & SecOps</a></td><td>Mots de passe, hash, Base64</td><td><span class="badge ok">ACTIF</span></td></tr>
-    <tr><td><a href="/owasp"  class="lien">Web Audit OWASP</a></td><td>12 vérifications de headers HTTP</td><td><span class="badge ok">ACTIF</span></td></tr>
-    <tr><td>WHOIS & DNS</td><td>Lookup WHOIS + enregistrements DNS</td><td><span class="badge warn">BIENTÔT</span></td></tr>
-  </table>
+
+{# ── LIGNE : MODULES + ACTIVITÉ ── #}
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-top:4px">
+
+  {# Modules disponibles #}
+  <div class="card">
+    <div class="card-title">Modules disponibles</div>
+    <table>
+      <tr><th>Module</th><th>URL</th><th>Statut</th></tr>
+      <tr>
+        <td><a href="/ports"  class="lien">Port Scanner</a></td>
+        <td class="dim">/ports</td>
+        <td><span class="badge ok">ACTIF</span></td>
+      </tr>
+      <tr>
+        <td><a href="/logs"   class="lien">Log Analyzer</a></td>
+        <td class="dim">/logs</td>
+        <td><span class="badge ok">ACTIF</span></td>
+      </tr>
+      <tr>
+        <td><a href="/owasp"  class="lien">Web Audit OWASP</a></td>
+        <td class="dim">/owasp</td>
+        <td><span class="badge ok">ACTIF</span></td>
+      </tr>
+      <tr>
+        <td><a href="/whois"  class="lien">WHOIS & DNS</a></td>
+        <td class="dim">/whois</td>
+        <td><span class="badge ok">ACTIF</span></td>
+      </tr>
+      <tr>
+        <td><a href="/ip-intel" class="lien">IP Intelligence</a></td>
+        <td class="dim">/ip-intel</td>
+        <td><span class="badge ok">ACTIF</span></td>
+      </tr>
+      <tr>
+        <td><a href="/secops" class="lien">Crypto & SecOps</a></td>
+        <td class="dim">/secops (8 outils)</td>
+        <td><span class="badge ok">ACTIF</span></td>
+      </tr>
+    </table>
+  </div>
+
+  {# Activité récente #}
+  <div class="card">
+    <div class="card-title">
+      Activité récente
+      <span style="font-weight:normal;font-size:11px;color:var(--dim);margin-left:8px">
+        Uptime : {{ stats.uptime }}
+      </span>
+    </div>
+    {% if stats.activites %}
+    <table>
+      <tr><th>Module</th><th>Cible / Détail</th><th>Heure</th></tr>
+      {% for a in stats.activites %}
+      <tr>
+        <td>
+          <span class="badge info" style="font-size:10px">{{ a.module | upper }}</span>
+        </td>
+        <td style="font-size:12px;font-family:monospace;color:var(--text)">
+          {{ a.detail[:30] }}{% if a.detail|length > 30 %}…{% endif %}
+        </td>
+        <td class="dim" style="font-size:11px;white-space:nowrap">{{ a.heure }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p class="dim" style="font-size:13px;margin-top:10px">
+      Aucune activité enregistrée depuis le démarrage.<br>
+      Lancez une analyse depuis n'importe quel module.
+    </p>
+    {% endif %}
+  </div>
+
 </div>
+
+{# ── ACCÈS RAPIDE ── #}
+<div class="card" style="margin-top:4px">
+  <div class="card-title">Accès rapide</div>
+  <div class="tools-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr))">
+    <a href="/ports"              class="tool-card"><div class="tool-icon">◎</div><div class="tool-info"><div class="tool-name">Port Scanner</div><div class="tool-desc">Scan TCP 1024 ports</div></div></a>
+    <a href="/owasp"              class="tool-card"><div class="tool-icon">◇</div><div class="tool-info"><div class="tool-name">Web Audit OWASP</div><div class="tool-desc">12 vérifications HTTP</div></div></a>
+    <a href="/whois"              class="tool-card"><div class="tool-icon">◈</div><div class="tool-info"><div class="tool-name">WHOIS & DNS</div><div class="tool-desc">Lookup complet</div></div></a>
+    <a href="/ip-intel"           class="tool-card"><div class="tool-icon">🌍</div><div class="tool-info"><div class="tool-name">IP Intelligence</div><div class="tool-desc">Géoloc + réputation</div></div></a>
+    <a href="/secops/ssl"         class="tool-card"><div class="tool-icon">🔐</div><div class="tool-info"><div class="tool-name">SSL/TLS Scanner</div><div class="tool-desc">Certificat + alertes</div></div></a>
+    <a href="/secops/phishing"    class="tool-card"><div class="tool-icon">🎣</div><div class="tool-info"><div class="tool-name">Détecteur phishing</div><div class="tool-desc">Score de risque URL</div></div></a>
+    <a href="/secops/fuite"       class="tool-card"><div class="tool-icon">🔍</div><div class="tool-info"><div class="tool-name">Vérif. fuite</div><div class="tool-desc">HaveIBeenPwned API</div></div></a>
+    <a href="/secops/hash-detect" class="tool-card"><div class="tool-icon">🧬</div><div class="tool-info"><div class="tool-name">Hash Detector</div><div class="tool-desc">MD5/SHA/bcrypt/NTLM</div></div></a>
+  </div>
+</div>
+
 {% endblock %}

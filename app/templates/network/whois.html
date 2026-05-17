@@ -238,3 +238,23 @@
 {% endif %}
 
 {% endblock %}
+
+{# Bouton export PDF — visible seulement si des résultats existent #}
+{% if whois_data and not whois_data.erreur %}
+<div style="text-align:right; margin-top:8px">
+  <form method="POST" action="/rapport/whois" id="form-pdf-whois">
+    <input type="hidden" name="whois_data" id="input-whois-data">
+    <input type="hidden" name="dns_data"   id="input-dns-data">
+    <button type="button" class="btn-pdf" onclick="exporterPDF()">📄 Exporter en PDF</button>
+  </form>
+</div>
+<script>
+  const whoisData = {{ whois_data | tojson }};
+  const dnsData   = {{ dns_data   | tojson }};
+  function exporterPDF() {
+    document.getElementById('input-whois-data').value = JSON.stringify(whoisData);
+    document.getElementById('input-dns-data').value   = JSON.stringify(dnsData);
+    document.getElementById('form-pdf-whois').submit();
+  }
+</script>
+{% endif %}

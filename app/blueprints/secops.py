@@ -103,6 +103,7 @@ def ssl_scan():
         domaine = request.form.get('domaine', '').strip()
         if domaine:
             resultat = analyser_ssl(domaine)
+            incrementer("ssl", domaine)
     return render_template('secops/ssl.html', active='secops', resultat=resultat)
 
 

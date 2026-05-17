@@ -41,3 +41,19 @@
 </div>
 {% endif %}
 {% endblock %}
+
+{% if audit %}
+<div style="text-align:right; margin-top:8px">
+  <form method="POST" action="/rapport/owasp" id="form-pdf-owasp">
+    <input type="hidden" name="data" id="input-owasp-data">
+    <button type="button" class="btn-pdf" onclick="exporterPDF()">📄 Exporter en PDF</button>
+  </form>
+</div>
+<script>
+  const owaspData = {{ audit | tojson }};
+  function exporterPDF() {
+    document.getElementById('input-owasp-data').value = JSON.stringify(owaspData);
+    document.getElementById('form-pdf-owasp').submit();
+  }
+</script>
+{% endif %}

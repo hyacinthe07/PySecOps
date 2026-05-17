@@ -39,3 +39,19 @@
   {% endif %}
 </div>
 {% endblock %}
+
+{% if resultats %}
+<div style="text-align:right; margin-top:8px">
+  <form method="POST" action="/rapport/ports" id="form-pdf-ports">
+    <input type="hidden" name="data" id="input-ports-data">
+    <button type="button" class="btn-pdf" onclick="exporterPDF()">📄 Exporter en PDF</button>
+  </form>
+</div>
+<script>
+  const portsData = {{ resultats | tojson }};
+  function exporterPDF() {
+    document.getElementById('input-ports-data').value = JSON.stringify(portsData);
+    document.getElementById('form-pdf-ports').submit();
+  }
+</script>
+{% endif %}

@@ -5,6 +5,7 @@ from app.blueprints.logs    import logs_bp
 from app.blueprints.secops  import secops_bp
 from app.blueprints.owasp   import owasp_bp
 from app.blueprints.network import network_bp
+from app.blueprints.rapports import rapports_bp
 
 def create_app():
     app = Flask(__name__, template_folder='app/templates', static_folder='app/static')
@@ -16,6 +17,7 @@ def create_app():
     app.register_blueprint(secops_bp)
     app.register_blueprint(owasp_bp)
     app.register_blueprint(network_bp)
+    app.register_blueprint(rapports_bp)
     return app
 
 app = create_app()

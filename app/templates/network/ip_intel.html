@@ -237,3 +237,19 @@
 
 {% endif %}
 {% endblock %}
+
+{% if resultat %}
+<div style="text-align:right; margin-top:8px">
+  <form method="POST" action="/rapport/ip" id="form-pdf-ip">
+    <input type="hidden" name="data" id="input-ip-data">
+    <button type="button" class="btn-pdf" onclick="exporterPDF()">📄 Exporter en PDF</button>
+  </form>
+</div>
+<script>
+  const ipData = {{ resultat | tojson }};
+  function exporterPDF() {
+    document.getElementById('input-ip-data').value = JSON.stringify(ipData);
+    document.getElementById('form-pdf-ip').submit();
+  }
+</script>
+{% endif %}

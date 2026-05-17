@@ -103,3 +103,21 @@ tr:hover td{background:rgba(88,166,255,.04)}
   padding: 16px 22px 6px;
   opacity: .6;
 }
+
+/* ─── BOUTON PDF ─── */
+.btn-pdf {
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.btn-pdf:hover { background: rgba(248,81,73,.1); }
+
+/* ─── PURPLE BADGE ─── */
+.badge.purple { background: rgba(188,140,255,.15); color: var(--purple); }

@@ -110,3 +110,19 @@
   {% endif %}
 </div>
 {% endblock %}
+
+{% if resultat and not resultat.erreur %}
+<div style="text-align:right; margin-top:8px">
+  <form method="POST" action="/rapport/ssl" id="form-pdf-ssl">
+    <input type="hidden" name="data" id="input-ssl-data">
+    <button type="button" class="btn-pdf" onclick="exporterPDF()">📄 Exporter en PDF</button>
+  </form>
+</div>
+<script>
+  const sslData = {{ resultat | tojson }};
+  function exporterPDF() {
+    document.getElementById('input-ssl-data').value = JSON.stringify(sslData);
+    document.getElementById('form-pdf-ssl').submit();
+  }
+</script>
+{% endif %}
