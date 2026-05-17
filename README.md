@@ -252,6 +252,20 @@ Voir le fichier [LICENSE](LICENSE) pour les détails complets.
 
 <img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/9d5305fc-c13e-4e1f-8178-5af3ffde0862" />
 
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/c896ca26-fbba-492f-87ce-25e6536f99fd" />
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/09169216-9742-4366-9341-f030cb97e1af" />
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/5e4c86c6-41ab-4942-9bd3-38b2ec8b5e73" />
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/f5849175-b422-4dc1-978c-5e53f2b05409" />
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/73a4589d-69ac-4d60-b119-cbe041074fcd" />
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/66e8bc91-3441-45e5-957f-bddfe44ec56d" />
+
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/cdbaba4a-bd56-4d41-b2db-8bb88a613e65" />
+
 
 
 
