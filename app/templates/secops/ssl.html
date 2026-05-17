@@ -1,0 +1,112 @@
+{% extends "layout.html" %}
+{% block titre %}Scanner SSL/TLS{% endblock %}
+{% block page_titre %}🔐 Scanner SSL/TLS{% endblock %}
+{% block page_sous %}Analyse le certificat SSL, la date d'expiration, le protocole et la sécurité HTTPS d'un domaine{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Domaine à analyser</div>
+  <form method="POST" class="form-row">
+    <input type="text" name="domaine"
+           placeholder="exemple.com ou https://exemple.com"
+           style="width:400px" required>
+    <button type="submit" class="btn">🔐 Analyser SSL</button>
+  </form>
+
+  {% if resultat %}
+    {% if resultat.erreur %}
+      <div class="alert-err" style="margin-top:16px">⚠ {{ resultat.erreur }}</div>
+    {% else %}
+
+    {# Score global #}
+    <div class="result-panel {{ resultat.couleur }}" style="margin-top:20px">
+      <div class="result-header">
+        {% if resultat.couleur == 'green' %}🔒{% elif resultat.couleur == 'orange' %}⚠{% else %}🚨{% endif %}
+        <span>{{ resultat.niveau }}</span>
+        <span style="font-size:22px;font-weight:700;margin-left:auto">{{ resultat.score }}/100</span>
+      </div>
+      <div class="bar-wrap" style="margin-top:10px">
+        <div class="bar {{ 'fort' if resultat.couleur == 'green' else ('moyen' if resultat.couleur == 'orange' else 'faible') }}"
+             style="width:{{ resultat.score }}%"></div>
+      </div>
+      <div class="stats-row" style="margin-top:16px">
+        <div class="mini-stat">
+          <div class="dim">Protocole</div>
+          <strong style="color:{{ 'var(--green)' if 'TLSv1.2' in resultat.protocole or 'TLSv1.3' in resultat.protocole else 'var(--red)' }}">
+            {{ resultat.protocole }}
+          </strong>
+        </div>
+        <div class="mini-stat">
+          <div class="dim">Expire le</div>
+          <strong style="color:{{ 'var(--red)' if resultat.jours_restants < 30 else 'var(--text)' }}">
+            {{ resultat.date_fin }}
+          </strong>
+        </div>
+        <div class="mini-stat">
+          <div class="dim">Jours restants</div>
+          <strong style="color:{{ 'var(--red)' if resultat.jours_restants < 30 else ('var(--orange)' if resultat.jours_restants < 60 else 'var(--green)') }}">
+            {{ resultat.jours_restants }}j
+          </strong>
+        </div>
+        <div class="mini-stat">
+          <div class="dim">Cipher</div>
+          <strong style="font-size:11px">{{ resultat.cipher }}</strong>
+        </div>
+      </div>
+    </div>
+
+    {# Détails du certificat #}
+    <div class="card" style="margin-top:16px">
+      <div class="card-title">Détails du certificat</div>
+      <div class="detect-body">
+        <div class="detect-row"><span class="dim">Domaine (CN)</span><strong>{{ resultat.cn }}</strong></div>
+        <div class="detect-row"><span class="dim">Organisation</span><span>{{ resultat.org }}</span></div>
+        <div class="detect-row"><span class="dim">Émetteur (CA)</span><span>{{ resultat.emetteur_org }} — {{ resultat.emetteur_cn }}</span></div>
+        <div class="detect-row"><span class="dim">Valide depuis</span><span>{{ resultat.date_debut }}</span></div>
+        <div class="detect-row"><span class="dim">Expire le</span><span>{{ resultat.date_fin }}</span></div>
+        <div class="detect-row">
+          <span class="dim">Certificat valide</span>
+          <span class="badge {% if resultat.est_valide %}ok{% else %}danger{% endif %}">
+            {% if resultat.est_valide %}✔ OUI{% else %}✘ NON{% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    {# SANs #}
+    {% if resultat.sans %}
+    <div class="card" style="margin-top:0">
+      <div class="card-title">Domaines couverts (SAN) — {{ resultat.nb_sans }} au total</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+        {% for san in resultat.sans %}
+        <code style="background:var(--bg);border:1px solid var(--border);padding:3px 10px;border-radius:4px;font-size:12px">{{ san }}</code>
+        {% endfor %}
+        {% if resultat.nb_sans > 8 %}
+        <span class="dim" style="font-size:12px;align-self:center">+ {{ resultat.nb_sans - 8 }} autres...</span>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {# Alertes #}
+    {% if resultat.alertes %}
+    <div class="card" style="margin-top:0">
+      <div class="card-title">{{ resultat.alertes|length }} alerte(s) détectée(s)</div>
+      {% for a in resultat.alertes %}
+      <div class="check-row">
+        <div class="check-nom">{{ a.msg }}</div>
+        <span class="badge {% if a.type == 'CRITIQUE' %}danger{% elif a.type == 'HAUTE' %}danger{% elif a.type == 'MOYENNE' %}warn{% else %}info{% endif %}">
+          {{ a.type }}
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="card" style="margin-top:0">
+      <p style="color:var(--green);font-size:13px">✅ Aucune alerte — certificat SSL en parfait état.</p>
+    </div>
+    {% endif %}
+
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

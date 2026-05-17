@@ -1,0 +1,97 @@
+{% extends "layout.html" %}
+{% block titre %}Intégrité de fichier{% endblock %}
+{% block page_titre %}🧾 Vérificateur d'intégrité{% endblock %}
+{% block page_sous %}Calcule MD5, SHA1, SHA256 et SHA512 d'un fichier — vérifie qu'il n'a pas été altéré{% endblock %}
+{% block contenu %}
+<div class="card">
+  <div class="card-title">Fichier à analyser</div>
+  <form method="POST" enctype="multipart/form-data">
+    <div class="form-row" style="margin-bottom:12px">
+      <input type="file" name="fichier" required>
+      <button type="submit" class="btn">🧾 Calculer les hashes</button>
+    </div>
+    <div class="form-row">
+      <input type="text" name="hash_ref"
+             placeholder="Hash de référence (optionnel — pour vérification)"
+             style="width:500px">
+    </div>
+    <p class="dim" style="font-size:12px;margin-top:8px">
+      💡 Collez le hash officiel du fichier pour vérifier son intégrité (MD5, SHA1 ou SHA256 acceptés).
+    </p>
+  </form>
+
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:14px">⚠ {{ erreur }}</div>
+  {% endif %}
+
+  {% if resultat %}
+  {# Résumé #}
+  <div class="result-panel {{ 'green' if not resultat.comparaison or resultat.comparaison.valide else 'red' }}" style="margin-top:20px">
+    <div class="result-header">
+      {% if resultat.comparaison %}
+        {% if resultat.comparaison.valide %}✅ Intégrité vérifiée{% else %}🚨 Intégrité compromise{% endif %}
+      {% else %}
+        📄 Analyse complète
+      {% endif %}
+    </div>
+    <div class="stats-row" style="margin-top:12px">
+      <div class="mini-stat"><div class="dim">Fichier</div><strong style="font-size:12px">{{ resultat.nom }}</strong></div>
+      <div class="mini-stat"><div class="dim">Taille</div><strong>{{ resultat.taille }}</strong></div>
+      <div class="mini-stat"><div class="dim">Analysé le</div><strong style="font-size:12px">{{ resultat.date_analyse }}</strong></div>
+    </div>
+    {% if resultat.comparaison %}
+    <div style="margin-top:12px;padding:10px;background:rgba(0,0,0,.2);border-radius:6px;font-size:13px">
+      {% if resultat.comparaison.valide %}
+      ✅ Hash {{ resultat.comparaison.hash }} correspondant — fichier authentique et non modifié.
+      {% else %}
+      🚨 Aucun hash ne correspond au hash de référence — fichier potentiellement altéré ou corrompu.
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  {# Table des hashes #}
+  <div class="card" style="margin-top:16px">
+    <div class="card-title">Empreintes cryptographiques</div>
+    <table>
+      <tr><th>Algorithme</th><th>Hash</th><th>Sécurité</th><th>Action</th></tr>
+      <tr>
+        <td><strong>MD5</strong></td>
+        <td><code id="h-md5" style="font-size:11px;word-break:break-all">{{ resultat.md5 }}</code></td>
+        <td><span class="badge danger">FAIBLE</span></td>
+        <td><button class="btn-copy" onclick="copier('h-md5')">📋</button></td>
+      </tr>
+      <tr>
+        <td><strong>SHA1</strong></td>
+        <td><code id="h-sha1" style="font-size:11px;word-break:break-all">{{ resultat.sha1 }}</code></td>
+        <td><span class="badge warn">FAIBLE</span></td>
+        <td><button class="btn-copy" onclick="copier('h-sha1')">📋</button></td>
+      </tr>
+      <tr>
+        <td><strong>SHA256</strong></td>
+        <td><code id="h-sha256" style="font-size:11px;word-break:break-all">{{ resultat.sha256 }}</code></td>
+        <td><span class="badge ok">FORT</span></td>
+        <td><button class="btn-copy" onclick="copier('h-sha256')">📋</button></td>
+      </tr>
+      <tr>
+        <td><strong>SHA512</strong></td>
+        <td><code id="h-sha512" style="font-size:11px;word-break:break-all">{{ resultat.sha512 }}</code></td>
+        <td><span class="badge ok">TRÈS FORT</span></td>
+        <td><button class="btn-copy" onclick="copier('h-sha512')">📋</button></td>
+      </tr>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function copier(id) {
+  const val = document.getElementById(id)?.innerText;
+  if (val) {
+    navigator.clipboard.writeText(val);
+    event.target.innerText = '✅';
+    setTimeout(() => event.target.innerText = '📋', 1500);
+  }
+}
+</script>
+{% endblock %}

@@ -476,3 +476,150 @@ def analyser_phishing(url: str) -> dict:
         "alertes": alertes,
         "nb_alertes": len(alertes),
     }
+
+
+# ─────────────────────────────────────────────
+# 7. SCANNER SSL/TLS
+# ─────────────────────────────────────────────
+
+import ssl
+import socket as _socket
+import datetime
+
+def analyser_ssl(domaine: str) -> dict:
+    """
+    Analyse le certificat SSL/TLS d'un domaine.
+    Retourne : validité, expiration, émetteur, protocole, alertes.
+    """
+    domaine = domaine.replace("https://", "").replace("http://", "").split("/")[0].strip()
+
+    alertes = []
+    try:
+        contexte = ssl.create_default_context()
+        with _socket.create_connection((domaine, 443), timeout=10) as sock:
+            with contexte.wrap_socket(sock, server_hostname=domaine) as ssock:
+                cert      = ssock.getpeercert()
+                protocole = ssock.version()
+                cipher    = ssock.cipher()
+    except ssl.SSLCertVerificationError as e:
+        return {"erreur": f"Certificat invalide ou non fiable : {e}"}
+    except _socket.timeout:
+        return {"erreur": "Timeout — domaine inaccessible sur le port 443."}
+    except ConnectionRefusedError:
+        return {"erreur": "Port 443 fermé — ce domaine ne supporte pas HTTPS."}
+    except Exception as e:
+        return {"erreur": f"Erreur : {e}"}
+
+    # Dates
+    fmt = "%b %d %H:%M:%S %Y %Z"
+    date_debut  = datetime.datetime.strptime(cert["notBefore"], fmt)
+    date_fin    = datetime.datetime.strptime(cert["notAfter"],  fmt)
+    maintenant  = datetime.datetime.utcnow()
+    jours_restants = (date_fin - maintenant).days
+    est_valide  = maintenant < date_fin and maintenant > date_debut
+
+    # Émetteur / Sujet
+    sujet  = dict(x[0] for x in cert.get("subject", []))
+    emetteur = dict(x[0] for x in cert.get("issuer", []))
+
+    # SANs (Subject Alternative Names)
+    sans = []
+    for typ, val in cert.get("subjectAltName", []):
+        if typ == "DNS":
+            sans.append(val)
+
+    # Alertes
+    if jours_restants < 0:
+        alertes.append({"type": "CRITIQUE", "msg": f"Certificat expiré depuis {abs(jours_restants)} jours"})
+    elif jours_restants < 14:
+        alertes.append({"type": "CRITIQUE", "msg": f"Expiration dans {jours_restants} jours — renouvellement URGENT"})
+    elif jours_restants < 30:
+        alertes.append({"type": "HAUTE",    "msg": f"Expiration dans {jours_restants} jours — planifiez le renouvellement"})
+    elif jours_restants < 60:
+        alertes.append({"type": "MOYENNE",  "msg": f"Expiration dans {jours_restants} jours"})
+
+    if protocole in ("TLSv1", "TLSv1.1", "SSLv2", "SSLv3"):
+        alertes.append({"type": "HAUTE", "msg": f"Protocole obsolète : {protocole} (vulnérable)"})
+
+    cipher_name = cipher[0] if cipher else "inconnu"
+    if "RC4" in cipher_name or "DES" in cipher_name or "NULL" in cipher_name:
+        alertes.append({"type": "CRITIQUE", "msg": f"Cipher faible détecté : {cipher_name}"})
+
+    # Score global
+    if jours_restants < 0 or not est_valide:
+        score, niveau, couleur = 0, "EXPIRÉ", "red"
+    elif alertes and any(a["type"] == "CRITIQUE" for a in alertes):
+        score, niveau, couleur = 30, "CRITIQUE", "red"
+    elif alertes and any(a["type"] == "HAUTE" for a in alertes):
+        score, niveau, couleur = 55, "RISQUE", "orange"
+    elif alertes:
+        score, niveau, couleur = 75, "ATTENTION", "orange"
+    else:
+        score, niveau, couleur = 100, "SÉCURISÉ", "green"
+
+    return {
+        "domaine":        domaine,
+        "est_valide":     est_valide,
+        "date_debut":     date_debut.strftime("%d/%m/%Y"),
+        "date_fin":       date_fin.strftime("%d/%m/%Y"),
+        "jours_restants": jours_restants,
+        "protocole":      protocole,
+        "cipher":         cipher_name,
+        "cn":             sujet.get("commonName", "—"),
+        "org":            sujet.get("organizationName", "—"),
+        "emetteur_cn":    emetteur.get("commonName", "—"),
+        "emetteur_org":   emetteur.get("organizationName", "—"),
+        "sans":           sans[:8],
+        "nb_sans":        len(sans),
+        "alertes":        alertes,
+        "score":          score,
+        "niveau":         niveau,
+        "couleur":        couleur,
+    }
+
+
+# ─────────────────────────────────────────────
+# 8. VÉRIFICATEUR D'INTÉGRITÉ DE FICHIER
+# ─────────────────────────────────────────────
+
+def analyser_integrite(contenu_bytes: bytes, nom_fichier: str, hash_reference: str = "") -> dict:
+    """
+    Calcule MD5, SHA1, SHA256 d'un fichier uploadé.
+    Compare optionnellement avec un hash de référence fourni.
+    """
+    taille = len(contenu_bytes)
+
+    md5    = hashlib.md5(contenu_bytes).hexdigest()
+    sha1   = hashlib.sha1(contenu_bytes).hexdigest()
+    sha256 = hashlib.sha256(contenu_bytes).hexdigest()
+    sha512 = hashlib.sha512(contenu_bytes).hexdigest()
+
+    # Comparaison avec hash de référence
+    comparaison = None
+    if hash_reference:
+        ref = hash_reference.strip().lower()
+        if   ref == md5:    comparaison = {"hash": "MD5",    "valide": True}
+        elif ref == sha1:   comparaison = {"hash": "SHA1",   "valide": True}
+        elif ref == sha256: comparaison = {"hash": "SHA256",  "valide": True}
+        elif ref == sha512: comparaison = {"hash": "SHA512",  "valide": True}
+        else:               comparaison = {"hash": "inconnu", "valide": False}
+
+    # Taille lisible
+    if taille < 1024:
+        taille_lisible = f"{taille} octets"
+    elif taille < 1024 * 1024:
+        taille_lisible = f"{taille/1024:.1f} Ko"
+    else:
+        taille_lisible = f"{taille/1024/1024:.2f} Mo"
+
+    return {
+        "nom":            nom_fichier,
+        "taille":         taille_lisible,
+        "taille_bytes":   taille,
+        "md5":            md5,
+        "sha1":           sha1,
+        "sha256":         sha256,
+        "sha512":         sha512,
+        "comparaison":    comparaison,
+        "date_analyse":   datetime.datetime.now().strftime("%d/%m/%Y à %H:%M:%S"),
+    }

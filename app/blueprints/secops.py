@@ -91,3 +91,35 @@ def phishing():
         if url:
             resultat = analyser_phishing(url)
     return render_template('secops/phishing.html', active='secops', resultat=resultat)
+
+
+# ── 7. SCANNER SSL/TLS
+from app.utils.secops_utils import analyser_ssl, analyser_integrite
+
+@secops_bp.route('/secops/ssl', methods=['GET', 'POST'])
+def ssl_scan():
+    resultat = None
+    if request.method == 'POST':
+        domaine = request.form.get('domaine', '').strip()
+        if domaine:
+            resultat = analyser_ssl(domaine)
+    return render_template('secops/ssl.html', active='secops', resultat=resultat)
+
+
+# ── 8. INTÉGRITÉ DE FICHIER
+@secops_bp.route('/secops/integrity', methods=['GET', 'POST'])
+def integrity():
+    resultat = None
+    erreur   = None
+    if request.method == 'POST':
+        fichier   = request.files.get('fichier')
+        hash_ref  = request.form.get('hash_ref', '').strip()
+        if not fichier or fichier.filename == '':
+            erreur = "Aucun fichier sélectionné."
+        else:
+            try:
+                contenu = fichier.read()
+                resultat = analyser_integrite(contenu, fichier.filename, hash_ref)
+            except Exception as e:
+                erreur = f"Erreur lors de la lecture : {e}"
+    return render_template('secops/integrity.html', active='secops', resultat=resultat, erreur=erreur)
