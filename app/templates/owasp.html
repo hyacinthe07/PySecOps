@@ -1,59 +1,169 @@
 {% extends "layout.html" %}
-{% block titre %}Web Audit OWASP{% endblock %}
+{% block titre %}Web Vulnerability Scanner{% endblock %}
 {% block page_titre %}Web Vulnerability Scanner{% endblock %}
-{% block page_sous %}Audit complet de 12 headers HTTP de sécurité (OWASP Top 10){% endblock %}
+{% block page_sous %}Crawler + SQLi + XSS + LFI + SSTI + Open Redirect — tests actifs réels{% endblock %}
+
 {% block contenu %}
 <div class="card">
   <div class="card-title">Cible à auditer</div>
   <form method="POST" class="form-row">
-    <input type="text" name="url" placeholder="https://example.com" style="width:420px">
-    <button type="submit" class="btn">🔎 Lancer l'audit</button>
+    <input type="text" name="url"
+           placeholder="https://example.com" style="width:450px">
+    <button type="submit" class="btn">🔎 Scanner</button>
   </form>
-  {% if erreur %}<div class="alert-err">⚠ {{ erreur }}</div>{% endif %}
+  <p class="dim" style="font-size:12px;margin-top:8px">
+    ⚠ Tests actifs — utilisez uniquement sur des cibles autorisées.
+    Le scanner crawle le site et teste chaque paramètre détecté.
+  </p>
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
+  {% endif %}
 </div>
 
 {% if audit %}
-<div class="stats-grid">
-  <div class="stat-card"><div class="stat-val" style="color:var(--red)">{{ audit.stats.haute }}</div><div class="stat-lbl">Hautes</div></div>
-  <div class="stat-card"><div class="stat-val" style="color:var(--orange)">{{ audit.stats.moyenne }}</div><div class="stat-lbl">Moyennes</div></div>
-  <div class="stat-card"><div class="stat-val" style="color:var(--blue)">{{ audit.stats.basse }}</div><div class="stat-lbl">Basses</div></div>
-  <div class="stat-card"><div class="stat-val" style="color:var(--green)">{{ audit.stats.ok }}</div><div class="stat-lbl">OK</div></div>
+
+{# Score global #}
+<div class="result-panel {{ audit.couleur }}" style="margin-bottom:16px">
+  <div class="result-header">
+    {% if audit.couleur == 'red' %}🚨{% elif audit.couleur == 'orange' %}⚠{% else %}✅{% endif %}
+    {{ audit.niveau }}
+    <span style="font-size:24px;font-weight:700;margin-left:auto">
+      {{ audit.score }}/100
+    </span>
+  </div>
+  <div class="bar-wrap" style="margin-top:10px">
+    <div class="bar {{ 'faible' if audit.couleur=='red' else ('moyen' if audit.couleur=='orange' else 'fort') }}"
+         style="width:{{ [audit.score,3]|max }}%"></div>
+  </div>
+  <div class="stats-row" style="margin-top:14px">
+    <div class="mini-stat"><div class="dim">URL</div>
+      <strong style="font-size:11px">{{ audit.url[:40] }}</strong></div>
+    <div class="mini-stat"><div class="dim">Pages crawlées</div>
+      <strong>{{ audit.crawl.nb_pages }}</strong></div>
+    <div class="mini-stat"><div class="dim">Paramètres testés</div>
+      <strong>{{ audit.crawl.params_get|length }}</strong></div>
+    <div class="mini-stat"><div class="dim">Formulaires testés</div>
+      <strong>{{ audit.crawl.formulaires|length }}</strong></div>
+    <div class="mini-stat"><div class="dim">Vulnérabilités</div>
+      <strong style="color:var(--red)">{{ audit.nb_vulns }}</strong></div>
+  </div>
 </div>
+
+{# Stats par type #}
+{% if audit.nb_vulns > 0 %}
+<div class="stats-grid" style="margin-bottom:16px">
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--red)">{{ audit.stats.sqli }}</div>
+    <div class="stat-lbl">SQL Injection</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--orange)">{{ audit.stats.xss }}</div>
+    <div class="stat-lbl">XSS</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--red)">{{ audit.stats.lfi }}</div>
+    <div class="stat-lbl">LFI</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--red)">{{ audit.stats.ssti }}</div>
+    <div class="stat-lbl">SSTI</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-val" style="color:var(--orange)">{{ audit.stats.redirect }}</div>
+    <div class="stat-lbl">Open Redirect</div>
+  </div>
+</div>
+{% endif %}
+
+{# Vulnérabilités détectées #}
+{% if audit.vulnerabilites %}
 <div class="card">
-  <div class="card-title">Résultats — <span style="color:var(--blue)">{{ audit.url }}</span> (HTTP {{ audit.status }})</div>
-  {% for c in audit.resultats %}
-  <div class="check-row">
-    <div>
-      <div class="check-nom">{{ c.nom }}</div>
-      {% if c.conseil %}<div class="check-conseil">💡 {{ c.conseil }}</div>{% endif %}
-      <code style="font-size:11px;color:var(--dim)">{{ c.valeur }}</code>
+  <div class="card-title">
+    🚨 Vulnérabilités détectées — {{ audit.nb_vulns }}
+  </div>
+  {% for v in audit.vulnerabilites %}
+  <div style="border:1px solid var(--border);border-radius:8px;padding:14px;
+              margin-bottom:10px;background:{% if v.severite=='CRITIQUE' %}rgba(248,81,73,.04)
+              {% elif v.severite=='HAUTE' %}rgba(210,153,34,.04){% else %}var(--bg){% endif %}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <strong style="font-size:14px;color:{% if v.severite=='CRITIQUE' %}var(--red){% elif v.severite=='HAUTE' %}var(--orange){% else %}var(--text){% endif %}">
+        {{ v.type }}
+      </strong>
+      <div style="display:flex;gap:6px">
+        <span class="badge {% if v.severite=='CRITIQUE' %}danger{% elif v.severite=='HAUTE' %}danger{% else %}warn{% endif %}">
+          {{ v.severite }}
+        </span>
+        <span class="badge info" style="font-size:10px">CVSS {{ v.cvss }}</span>
+      </div>
     </div>
-    <div>
-      {% if c.statut == 'VULNÉRABLE' %}
-        <span class="badge {% if c.severite=='HAUTE' %}danger{% elif c.severite=='MOYENNE' %}warn{% else %}info{% endif %}">{{ c.severite }}</span>
-        <span class="badge danger" style="font-size:10px;margin-left:4px">VULNÉRABLE</span>
-      {% else %}
-        <span class="badge ok">✔ OK</span>
-      {% endif %}
+    <div class="detect-body" style="padding:0">
+      <div class="detect-row">
+        <span class="dim">Paramètre</span>
+        <code style="font-size:12px;color:var(--orange)">{{ v.parametre }}</code>
+      </div>
+      <div class="detect-row">
+        <span class="dim">Payload</span>
+        <code style="font-size:11px;color:var(--red)">{{ v.payload }}</code>
+      </div>
+      <div class="detect-row">
+        <span class="dim">Evidence</span>
+        <span style="font-size:12px">{{ v.evidence }}</span>
+      </div>
+      <div class="detect-row">
+        <span class="dim">URL testée</span>
+        <a href="{{ v.url }}" target="_blank"
+           style="font-size:11px;color:var(--blue);word-break:break-all">
+          {{ v.url[:100] }}
+        </a>
+      </div>
     </div>
   </div>
   {% endfor %}
 </div>
+{% else %}
+<div class="card">
+  <p style="color:var(--green);font-size:13px">
+    ✅ Aucune vulnérabilité détectée sur les {{ audit.crawl.params_get|length }}
+    paramètre(s) et {{ audit.crawl.formulaires|length }} formulaire(s) testés.
+  </p>
+</div>
 {% endif %}
-{% endblock %}
 
-{% if audit %}
-<div style="text-align:right; margin-top:8px">
+{# Liens crawlés #}
+{% if audit.crawl.liens %}
+<div class="card">
+  <div class="card-title">
+    🕷 Pages et liens découverts — {{ audit.crawl.liens|length }}
+  </div>
+  <div style="max-height:200px;overflow-y:auto">
+    {% for lien in audit.crawl.liens[:30] %}
+    <div style="padding:4px 0;border-bottom:1px solid var(--border)">
+      <a href="{{ lien }}" target="_blank"
+         style="font-size:12px;color:var(--blue);font-family:monospace">
+        {{ lien[:80] }}
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# Export PDF #}
+<div style="text-align:right;margin-top:8px">
   <form method="POST" action="/rapport/owasp" id="form-pdf-owasp">
     <input type="hidden" name="data" id="input-owasp-data">
-    <button type="button" class="btn-pdf" onclick="exporterPDF()">📄 Exporter en PDF</button>
+    <button type="button" class="btn-pdf" onclick="exporterPDF()">
+      📄 Exporter en PDF
+    </button>
   </form>
 </div>
 <script>
-  const owaspData = {{ audit | tojson }};
-  function exporterPDF() {
-    document.getElementById('input-owasp-data').value = JSON.stringify(owaspData);
-    document.getElementById('form-pdf-owasp').submit();
-  }
+const owaspData = {{ audit | tojson }};
+function exporterPDF() {
+  document.getElementById('input-owasp-data').value = JSON.stringify(owaspData);
+  document.getElementById('form-pdf-owasp').submit();
+}
 </script>
+
 {% endif %}
+{% endblock %}

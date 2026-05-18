@@ -1,12 +1,15 @@
 {% extends "layout.html" %}
 {% block titre %}Port Scanner{% endblock %}
 {% block page_titre %}Port Scanner{% endblock %}
-{% block page_sous %}Scan TCP multithreadé — jusqu'à 1024 ports en parallèle{% endblock %}
+{% block page_sous %}Scan TCP + identification complète de chaque service exposé{% endblock %}
+
 {% block contenu %}
 <div class="card">
-  <div class="card-title">Paramètres</div>
+  <div class="card-title">Paramètres du scan</div>
   <form method="POST" class="form-row">
-    <input type="text" name="ip" placeholder="IP ou domaine (ex: 192.168.1.1)" required>
+    <input type="text" name="ip"
+           placeholder="IP ou domaine (ex: 192.168.1.1)"
+           required style="width:340px">
     <select name="port_range">
       <option value="1024">Top 1024 ports</option>
       <option value="500">500 ports</option>
@@ -14,44 +17,142 @@
     </select>
     <button type="submit" class="btn">⚡ Scanner</button>
   </form>
-  {% if erreur %}<div class="alert-err">⚠ {{ erreur }}</div>{% endif %}
-  {% if resultats %}
-  <div class="meta-row">
-    <span>Cible : <strong class="hl">{{ resultats.target }}</strong></span>
-    <span>Ports scannés : <strong>{{ resultats.range }}</strong></span>
-    <span>Ouverts : <strong class="hl-green">{{ resultats.total }}</strong></span>
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
+  {% endif %}
+</div>
+
+{% if resultats %}
+
+{# Score global #}
+<div class="result-panel {{ resultats.couleur }}" style="margin-bottom:16px">
+  <div class="result-header">
+    {% if resultats.couleur == 'red' %}🚨{% elif resultats.couleur == 'orange' %}⚠{% else %}✅{% endif %}
+    Exposition {{ resultats.niveau }}
+    <span style="font-size:24px;font-weight:700;margin-left:auto">
+      {{ resultats.score }}/100
+    </span>
   </div>
-  {% if resultats.ports %}
+  <div class="bar-wrap" style="margin-top:10px">
+    <div class="bar {{ 'faible' if resultats.couleur=='red' else ('moyen' if resultats.couleur=='orange' else 'fort') }}"
+         style="width:{{ [resultats.score,3]|max }}%"></div>
+  </div>
+  <div class="stats-row" style="margin-top:14px">
+    <div class="mini-stat"><div class="dim">Cible</div>
+      <strong style="color:var(--blue)">{{ resultats.cible }}</strong></div>
+    <div class="mini-stat"><div class="dim">IP</div>
+      <strong>{{ resultats.ip }}</strong></div>
+    <div class="mini-stat"><div class="dim">Ports ouverts</div>
+      <strong style="color:var(--orange)">{{ resultats.total }}</strong></div>
+    <div class="mini-stat"><div class="dim">Dangereux</div>
+      <strong style="color:var(--red)">{{ resultats.nb_dangereux }}</strong></div>
+    <div class="mini-stat"><div class="dim">Scanné le</div>
+      <strong style="font-size:11px">{{ resultats.date }}</strong></div>
+  </div>
+</div>
+
+{% if resultats.ports %}
+
+{# Alertes critiques #}
+{% set dangereux = resultats.ports | selectattr('dangereux') | list %}
+{% if dangereux %}
+<div class="card">
+  <div class="card-title">🚨 Services dangereux — {{ dangereux|length }} détecté(s)</div>
+  {% for p in dangereux %}
+  <div class="check-row">
+    <div>
+      <div class="check-nom">
+        Port <strong style="color:var(--red)">{{ p.port }}</strong> /
+        <strong>{{ p.service }}</strong>
+        {% if p.version %}
+        <span class="dim" style="font-size:12px"> — v{{ p.version }}</span>
+        {% endif %}
+      </div>
+      <div class="check-conseil">{{ p.risque }}</div>
+      {% if p.banner %}
+      <code style="font-size:10px;color:var(--dim)">
+        {{ p.banner[:100] }}
+      </code>
+      {% endif %}
+      {% if p.detail %}
+      <div style="margin-top:4px">
+        {% for k, v in p.detail.items() %}
+        <span class="dim" style="font-size:11px">{{ k }}: </span>
+        <code style="font-size:11px">{{ v }}</code>&nbsp;
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    <span class="badge danger">DANGER</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# Tableau complet #}
+<div class="card">
+  <div class="card-title">Tous les services détectés — {{ resultats.total }}</div>
   <table>
-    <tr><th>Port</th><th>Protocole</th><th>Service</th><th>Statut</th></tr>
+    <tr>
+      <th>Port</th><th>Service</th><th>Version</th>
+      <th>Bannière</th><th>SSL</th><th>Statut</th>
+    </tr>
     {% for p in resultats.ports %}
     <tr>
-      <td><strong>{{ p.port }}</strong></td>
-      <td>TCP</td>
-      <td>{{ p.service }}</td>
-      <td><span class="badge ok">OUVERT</span></td>
+      <td>
+        <strong style="color:{% if p.dangereux %}var(--red){% else %}var(--blue){% endif %}">
+          {{ p.port }}
+        </strong>
+      </td>
+      <td><strong>{{ p.service }}</strong></td>
+      <td>
+        <code style="font-size:10px">{{ p.version or '—' }}</code>
+      </td>
+      <td style="font-family:monospace;font-size:10px;color:var(--dim);max-width:180px;overflow:hidden">
+        {{ p.banner[:60] if p.banner else '—' }}
+      </td>
+      <td>
+        {% if p.ssl %}
+        <span class="badge ok" style="font-size:10px">TLS ✔</span>
+        {% else %}
+        <span class="dim" style="font-size:11px">—</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if p.dangereux %}
+        <span class="badge danger">⚠ RISQUE</span>
+        {% else %}
+        <span class="badge ok">OUVERT</span>
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </table>
-  {% else %}
-  <p class="dim" style="margin-top:16px">Aucun port ouvert détecté.</p>
-  {% endif %}
-  {% endif %}
 </div>
-{% endblock %}
 
-{% if resultats %}
-<div style="text-align:right; margin-top:8px">
+{# Export PDF #}
+<div style="text-align:right;margin-top:8px">
   <form method="POST" action="/rapport/ports" id="form-pdf-ports">
     <input type="hidden" name="data" id="input-ports-data">
-    <button type="button" class="btn-pdf" onclick="exporterPDF()">📄 Exporter en PDF</button>
+    <button type="button" class="btn-pdf" onclick="exporterPDF()">
+      📄 Exporter en PDF
+    </button>
   </form>
 </div>
 <script>
-  const portsData = {{ resultats | tojson }};
-  function exporterPDF() {
-    document.getElementById('input-ports-data').value = JSON.stringify(portsData);
-    document.getElementById('form-pdf-ports').submit();
-  }
+const portsData = {{ resultats | tojson }};
+function exporterPDF() {
+  document.getElementById('input-ports-data').value = JSON.stringify(portsData);
+  document.getElementById('form-pdf-ports').submit();
+}
 </script>
+
+{% else %}
+<div class="card">
+  <p style="color:var(--green);font-size:13px">
+    ✅ Aucun port ouvert détecté.
+  </p>
+</div>
 {% endif %}
+{% endif %}
+{% endblock %}
