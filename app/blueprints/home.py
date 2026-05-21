@@ -23,3 +23,14 @@ def react_dashboard():
 def react_static(path):
     from flask import send_from_directory
     return send_from_directory('../frontend/build', path)
+
+
+@home_bp.route('/dashboard-v3')
+def react_dashboard():
+    from flask import send_from_directory
+    return send_from_directory('../frontend/build', 'index.html')
+
+@home_bp.route('/dashboard-v3/<path:path>')
+def react_static(path):
+    from flask import send_from_directory
+    return send_from_directory('../frontend/build', path)
