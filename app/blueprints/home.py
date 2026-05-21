@@ -16,7 +16,7 @@ def home():
 
 
 @home_bp.route('/dashboard')
-def react_dashboard():
+def dashboard_page():
     """Sert le dashboard React buildé."""
     build_path = os.path.join(os.path.dirname(__file__), '../../frontend/build')
     return send_from_directory(build_path, 'index.html')
