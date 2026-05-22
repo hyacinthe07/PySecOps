@@ -4,17 +4,17 @@ import os
 
 home_bp = Blueprint('home', __name__)
 
-FRONTEND_BUILD = os.path.join(
-    os.path.dirname(__file__), '../../frontend/build'
-)
+# Chemin absolu basé sur la racine du projet
+ROOT_DIR     = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+FRONTEND_BUILD = os.path.join(ROOT_DIR, 'frontend', 'build')
 
 
 @home_bp.route('/')
 def home():
-    """Dashboard React — sert index.html du build React."""
-    if os.path.exists(os.path.join(FRONTEND_BUILD, 'index.html')):
+    index = os.path.join(FRONTEND_BUILD, 'index.html')
+    if os.path.exists(index):
         return send_from_directory(FRONTEND_BUILD, 'index.html')
-    # Fallback Jinja2 si React pas buildé
+    # Fallback Jinja2
     stats = get_stats()
     stats.setdefault('recon_scan', 0)
     stats.setdefault('ids', 0)
@@ -25,12 +25,29 @@ def home():
 @home_bp.route('/static/js/<path:filename>')
 def react_js(filename):
     return send_from_directory(
-        os.path.join(FRONTEND_BUILD, 'static/js'), filename
+        os.path.join(FRONTEND_BUILD, 'static', 'js'), filename
     )
 
 
 @home_bp.route('/static/css/<path:filename>')
 def react_css(filename):
     return send_from_directory(
-        os.path.join(FRONTEND_BUILD, 'static/css'), filename
+        os.path.join(FRONTEND_BUILD, 'static', 'css'), filename
     )
+
+
+@home_bp.route('/static/media/<path:filename>')
+def react_media(filename):
+    return send_from_directory(
+        os.path.join(FRONTEND_BUILD, 'static', 'media'), filename
+    )
+
+
+@home_bp.route('/logo192.png')
+def logo192():
+    return send_from_directory(FRONTEND_BUILD, 'logo192.png')
+
+
+@home_bp.route('/favicon.ico')
+def favicon():
+    return send_from_directory(FRONTEND_BUILD, 'favicon.ico')
