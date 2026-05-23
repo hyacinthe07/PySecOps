@@ -17,6 +17,7 @@ from app.blueprints.audit     import audit_bp
 from app.blueprints.osint     import osint_bp
 from app.blueprints.threat    import threat_bp
 from app.blueprints.checklist import checklist_bp
+from app.blueprints.nmap_import import nmap_bp
 from app.blueprints.api import api_bp
 from app.utils.db_utils import init_db
 
@@ -39,6 +40,7 @@ def create_app():
     app.register_blueprint(osint_bp)
     app.register_blueprint(threat_bp)
     app.register_blueprint(checklist_bp)
+    app.register_blueprint(nmap_bp)
     app.register_blueprint(api_bp)
     return app
 

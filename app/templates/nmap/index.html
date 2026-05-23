@@ -1,0 +1,245 @@
+{% extends "layout.html" %}
+{% block titre %}Import Nmap XML{% endblock %}
+{% block page_titre %}📡 Analyseur Nmap XML{% endblock %}
+{% block page_sous %}Importez votre fichier XML Nmap — analyse intelligente avec CVEs, score de risque et recommandations en français{% endblock %}
+
+{% block contenu %}
+
+{# ── UPLOAD ── #}
+<div class="card">
+  <div class="card-title">Importer un fichier Nmap XML</div>
+  <p class="dim" style="font-size:13px;margin-bottom:14px">
+    Générez le fichier sur votre machine avec :
+    <code style="background:#010409;border:1px solid var(--border);padding:2px 8px;border-radius:4px;font-size:12px">
+      nmap -sV -sC -oX scan.xml &lt;cible&gt;
+    </code>
+  </p>
+  <form method="POST" enctype="multipart/form-data">
+    <div class="form-row">
+      <input type="file" name="nmap_xml" accept=".xml" required>
+      <button type="submit" class="btn">📡 Analyser</button>
+    </div>
+  </form>
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
+  {% endif %}
+</div>
+
+{% if resultat %}
+
+{# ── RÉSUMÉ EN FRANÇAIS ── #}
+<div class="card" style="background:rgba(88,166,255,.04);border-color:rgba(88,166,255,.3)">
+  <div class="card-title">📋 Résumé de l'analyse</div>
+  <p style="font-size:13px;line-height:1.8;white-space:pre-line">{{ resultat.resume }}</p>
+</div>
+
+{# ── SCORE GLOBAL ── #}
+<div class="result-panel {{ resultat.couleur }}">
+  <div class="result-header">
+    {% if resultat.couleur == 'red' %}🚨{% elif resultat.couleur == 'orange' %}⚠{% elif resultat.couleur == 'yellow' %}⚡{% else %}✅{% endif %}
+    Niveau de risque — {{ resultat.niveau }}
+    <span style="font-size:26px;font-weight:700;margin-left:auto">{{ resultat.score }}/100</span>
+  </div>
+  <div class="bar-wrap" style="margin-top:10px">
+    <div class="bar {{ 'faible' if resultat.couleur == 'red' else ('moyen' if resultat.couleur == 'orange' else 'fort') }}"
+         style="width:{{ [resultat.score, 3]|max }}%"></div>
+  </div>
+  <div class="stats-row" style="margin-top:14px">
+    <div class="mini-stat">
+      <div class="dim">Hôtes scannés</div>
+      <strong>{{ resultat.scan.nb_hotes }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">Ports ouverts</div>
+      <strong style="color:var(--orange)">{{ resultat.nb_ports }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">Services dangereux</div>
+      <strong style="color:var(--red)">{{ resultat.vecteurs|length }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">CVEs trouvées</div>
+      <strong style="color:var(--red)">{{ resultat.nb_cves }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">Analysé le</div>
+      <strong style="font-size:11px">{{ resultat.date_analyse }}</strong>
+    </div>
+  </div>
+</div>
+
+{# ── INFOS SCAN ── #}
+<div class="card">
+  <div class="card-title">ℹ Informations du scan</div>
+  <div class="detect-body">
+    <div class="detect-row">
+      <span class="dim">Commande Nmap</span>
+      <code style="font-size:11px">{{ resultat.scan.args[:100] }}</code>
+    </div>
+    <div class="detect-row">
+      <span class="dim">Date du scan</span>
+      <span>{{ resultat.scan.start_time }}</span>
+    </div>
+    <div class="detect-row">
+      <span class="dim">Version Nmap</span>
+      <span>{{ resultat.scan.version_nmap }}</span>
+    </div>
+    <div class="detect-row">
+      <span class="dim">Hôtes en ligne</span>
+      <strong style="color:var(--green)">{{ resultat.scan.nb_hosts_up }} / {{ resultat.scan.nb_hosts_total }}</strong>
+    </div>
+  </div>
+</div>
+
+{# ── HÔTES ET PORTS ── #}
+{% for hote in resultat.scan.hotes %}
+<div class="card">
+  <div class="card-title">
+    🖥 {{ hote.ip }}
+    {% if hote.hostname %}
+    <span class="dim" style="font-weight:normal;font-size:12px"> — {{ hote.hostname }}</span>
+    {% endif %}
+    {% if hote.os %}
+    <span class="badge info" style="margin-left:8px;font-size:10px">{{ hote.os[:40] }}</span>
+    {% endif %}
+    {% if hote.mac %}
+    <span class="dim" style="font-size:11px;margin-left:8px">MAC: {{ hote.mac }}</span>
+    {% endif %}
+  </div>
+
+  {% if hote.ports %}
+  <table>
+    <tr>
+      <th>Port</th>
+      <th>Proto</th>
+      <th>Service</th>
+      <th>Produit / Version</th>
+      <th>Statut</th>
+    </tr>
+    {% for port in hote.ports %}
+    <tr>
+      <td>
+        <strong style="color:{% if port.dangereux %}var(--red){% else %}var(--blue){% endif %}">
+          {{ port.port }}
+        </strong>
+      </td>
+      <td class="dim" style="font-size:12px">{{ port.protocol }}</td>
+      <td>{{ port.service }}</td>
+      <td style="font-size:12px">
+        {{ port.produit }}
+        {% if port.version %}
+        <span class="dim"> v{{ port.version }}</span>
+        {% endif %}
+        {% if port.extra %}
+        <span class="dim" style="font-size:11px"> ({{ port.extra[:30] }})</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if port.dangereux %}
+        <span class="badge danger">⚠ DANGER</span>
+        {% else %}
+        <span class="badge ok">OUVERT</span>
+        {% endif %}
+      </td>
+    </tr>
+    {# Scripts Nmap #}
+    {% if port.scripts %}
+    {% for script_id, output in port.scripts.items() %}
+    <tr style="background:rgba(0,0,0,.2)">
+      <td colspan="5" style="font-size:11px;font-family:monospace;color:var(--dim);padding:6px 14px">
+        <strong style="color:var(--blue)">{{ script_id }}:</strong>
+        {{ output[:150] }}{% if output|length > 150 %}…{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    {% endif %}
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="dim" style="font-size:13px">Aucun port ouvert détecté sur cet hôte.</p>
+  {% endif %}
+</div>
+{% endfor %}
+
+{# ── VECTEURS D'ATTAQUE ── #}
+{% if resultat.vecteurs %}
+<div class="card">
+  <div class="card-title">🎯 Vecteurs d'attaque identifiés ({{ resultat.vecteurs|length }})</div>
+  {% for v in resultat.vecteurs %}
+  <div class="check-row">
+    <div>
+      <div class="check-nom">
+        Port <strong style="color:var(--red)">{{ v.port }}</strong> /
+        <strong>{{ v.service }}</strong>
+        <span class="dim" style="font-size:12px"> sur {{ v.hote }}</span>
+      </div>
+      <div class="check-conseil">{{ v.detail }}</div>
+    </div>
+    <span class="badge danger">{{ v.risque }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── CVEs TROUVÉES ── #}
+{% if resultat.cves %}
+<div class="card">
+  <div class="card-title">💀 CVEs détectées — {{ resultat.nb_cves }}</div>
+  <table>
+    <tr>
+      <th>CVE ID</th>
+      <th>Service</th>
+      <th>Hôte</th>
+      <th>CVSS</th>
+      <th>Sévérité</th>
+      <th>Description</th>
+    </tr>
+    {% for cve in resultat.cves %}
+    <tr>
+      <td>
+        <a href="{{ cve.url }}" target="_blank"
+           style="color:var(--blue);font-family:monospace;font-size:11px">
+          {{ cve.id }}
+        </a>
+      </td>
+      <td style="font-size:12px">{{ cve.service }}</td>
+      <td style="font-size:11px;font-family:monospace">{{ cve.hote }}</td>
+      <td>
+        <strong style="color:{% if cve.score >= 9 %}var(--red){% elif cve.score >= 7 %}var(--orange){% else %}var(--text){% endif %}">
+          {{ cve.score }}
+        </strong>
+      </td>
+      <td>
+        <span class="badge {% if cve.severite in ('CRITICAL','CRITIQUE') %}danger{% elif cve.severite in ('HIGH','HAUTE') %}danger{% elif cve.severite in ('MEDIUM','MOYENNE') %}warn{% else %}info{% endif %}">
+          {{ cve.severite }}
+        </span>
+      </td>
+      <td style="font-size:11px;color:var(--dim)">
+        {{ cve.desc[:80] }}{% if cve.desc|length > 80 %}…{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── RECOMMANDATIONS ── #}
+{% if resultat.recommandations %}
+<div class="card">
+  <div class="card-title">✅ Plan de remédiation prioritaire</div>
+  {% for r in resultat.recommandations %}
+  <div class="check-row">
+    <div>
+      <div class="check-nom">
+        {{ r.service }} (port {{ r.port }})
+      </div>
+      <div class="check-conseil">{{ r.action }}</div>
+    </div>
+    <span class="badge danger">{{ r.priorite }}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
