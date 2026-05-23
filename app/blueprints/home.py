@@ -4,8 +4,7 @@ import os
 
 home_bp = Blueprint('home', __name__)
 
-# Render exécute depuis /opt/render/project/src/
-BASE = os.getcwd()
+BASE           = os.getcwd()
 FRONTEND_BUILD = os.path.join(BASE, 'frontend', 'build')
 
 
@@ -21,6 +20,7 @@ def debug_path():
 
 @home_bp.route('/')
 def home():
+    """Dashboard React."""
     index = os.path.join(FRONTEND_BUILD, 'index.html')
     if os.path.exists(index):
         return send_from_directory(FRONTEND_BUILD, 'index.html')
@@ -31,19 +31,19 @@ def home():
     return render_template('home.html', active='home', stats=stats)
 
 
-@home_bp.route('/static/js/<path:filename>')
+@home_bp.route('/react/static/js/<path:filename>')
 def react_js(filename):
     return send_from_directory(
         os.path.join(FRONTEND_BUILD, 'static', 'js'), filename)
 
 
-@home_bp.route('/static/css/<path:filename>')
+@home_bp.route('/react/static/css/<path:filename>')
 def react_css(filename):
     return send_from_directory(
         os.path.join(FRONTEND_BUILD, 'static', 'css'), filename)
 
 
-@home_bp.route('/static/media/<path:filename>')
+@home_bp.route('/react/static/media/<path:filename>')
 def react_media(filename):
     return send_from_directory(
         os.path.join(FRONTEND_BUILD, 'static', 'media'), filename)
