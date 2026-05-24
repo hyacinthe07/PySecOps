@@ -1,38 +1,190 @@
 {% extends "layout.html" %}
-{% block titre %}Log Analyzer{% endblock %}
-{% block page_titre %}Log Analyzer{% endblock %}
-{% block page_sous %}Détection d'intrusions et d'IPs suspectes dans vos fichiers de logs{% endblock %}
+{% block titre %}Log Analyzer Intelligent{% endblock %}
+{% block page_titre %}📋 Log Analyzer Intelligent{% endblock %}
+{% block page_sous %}Upload votre log — résumé en français, timeline, IOCs, recommandations actionnables{% endblock %}
+
 {% block contenu %}
+
 <div class="card">
-  <div class="card-title">Importer un fichier log</div>
-  <form method="POST" enctype="multipart/form-data" class="form-row">
-    <input type="file" name="logfile" accept=".log,.txt" required>
-    <button type="submit" class="btn">🔍 Analyser</button>
+  <div class="card-title">Importer un fichier de log</div>
+  <form method="POST" enctype="multipart/form-data">
+    <div class="form-row">
+      <input type="file" name="logfile" accept=".log,.txt" required>
+      <button type="submit" class="btn">🔍 Analyser</button>
+    </div>
+    <p class="dim" style="font-size:12px;margin-top:8px">
+      Formats supportés : Apache, Nginx, SSH auth.log, Windows Event Log, ou log brut.
+    </p>
   </form>
-  {% if erreur %}<div class="alert-err">⚠ {{ erreur }}</div>{% endif %}
-  {% if analyse %}
-  <div class="meta-row">
-    <span>Lignes : <strong>{{ analyse.total_lignes }}</strong></span>
-    <span>IPs uniques : <strong class="hl">{{ analyse.total_ips }}</strong></span>
-    <span>Requêtes totales : <strong>{{ analyse.total_requetes }}</strong></span>
+  {% if erreur %}
+  <div class="alert-err" style="margin-top:12px">⚠ {{ erreur }}</div>
+  {% endif %}
+</div>
+
+{% if analyse %}
+
+{# ── RÉSUMÉ EN FRANÇAIS ── #}
+<div class="card" style="background:rgba(88,166,255,.04);border-color:rgba(88,166,255,.3)">
+  <div class="card-title">📋 Résumé de l'analyse</div>
+  <p style="font-size:13px;line-height:1.8;white-space:pre-line">{{ analyse.resume }}</p>
+</div>
+
+{# ── SCORE DE DANGER ── #}
+<div class="result-panel {{ analyse.couleur }}">
+  <div class="result-header">
+    {% if analyse.couleur == 'red' %}🚨{% elif analyse.couleur == 'orange' %}⚠{% elif analyse.couleur == 'yellow' %}⚡{% else %}✅{% endif %}
+    Niveau de menace — {{ analyse.niveau }}
+    <span style="font-size:26px;font-weight:700;margin-left:auto">{{ analyse.score }}/100</span>
   </div>
+  <div class="bar-wrap" style="margin-top:10px">
+    <div class="bar {{ 'faible' if analyse.couleur=='red' else ('moyen' if analyse.couleur=='orange' else 'fort') }}"
+         style="width:{{ [analyse.score,3]|max }}%"></div>
+  </div>
+  <div class="stats-row" style="margin-top:14px">
+    <div class="mini-stat">
+      <div class="dim">Lignes analysées</div>
+      <strong>{{ analyse.nb_lignes }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">Alertes détectées</div>
+      <strong style="color:var(--red)">{{ analyse.nb_alertes }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">IPs hostiles</div>
+      <strong style="color:var(--red)">{{ analyse.ips_malveillantes|length }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">Brute-force</div>
+      <strong style="color:var(--orange)">{{ analyse.ips_bruteforce|length }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">Format log</div>
+      <strong>{{ analyse.format | upper }}</strong>
+    </div>
+    <div class="mini-stat">
+      <div class="dim">Analysé le</div>
+      <strong style="font-size:11px">{{ analyse.date_analyse }}</strong>
+    </div>
+  </div>
+</div>
+
+{# ── TYPES D'ATTAQUES ── #}
+{% if analyse.patterns_count %}
+<div class="card">
+  <div class="card-title">📊 Types d'attaques détectées</div>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px">
+    {% for pattern, nb in analyse.patterns_count.items() %}
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;
+                padding:10px 16px;display:flex;align-items:center;gap:10px">
+      <strong style="color:var(--red);font-size:20px">{{ nb }}</strong>
+      <span style="font-size:13px">{{ pattern }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+{# ── IPs MALVEILLANTES ── #}
+{% if analyse.ips_malveillantes %}
+<div class="card">
+  <div class="card-title">🎯 IPs malveillantes — {{ analyse.ips_malveillantes|length }}</div>
   <table>
-    <tr><th>Adresse IP</th><th>Requêtes</th><th>Critique</th><th>Élevé</th><th>Statut</th></tr>
-    {% for r in analyse.resultats %}
+    <tr><th>Adresse IP</th><th>Alertes</th><th>Types d'attaques</th><th>Sévérité</th></tr>
+    {% for ip_data in analyse.ips_malveillantes %}
     <tr>
-      <td><strong>{{ r.ip }}</strong></td>
-      <td>{{ r.total }}</td>
-      <td style="color:var(--red)">{{ r.critique }}</td>
-      <td style="color:var(--orange)">{{ r.elevated }}</td>
       <td>
-        {% if r.statut == 'CRITIQUE' %}<span class="badge danger">CRITIQUE</span>
-        {% elif r.statut == 'ÉLEVÉ' %}<span class="badge warn">ÉLEVÉ</span>
-        {% elif r.statut == 'SUSPECT' %}<span class="badge info">SUSPECT</span>
-        {% else %}<span class="badge ok">NORMAL</span>{% endif %}
+        <code style="color:var(--blue);font-size:13px">{{ ip_data.ip }}</code>
+      </td>
+      <td>
+        <strong style="color:var(--red)">{{ ip_data.nb_alertes }}</strong>
+      </td>
+      <td style="font-size:12px;color:var(--dim)">
+        {{ ip_data.types[:2] | join(', ') }}
+        {% if ip_data.types|length > 2 %}+{{ ip_data.types|length - 2 }}{% endif %}
+      </td>
+      <td>
+        <span class="badge {% if ip_data.severite == 'CRITIQUE' %}danger{% else %}warn{% endif %}">
+          {{ ip_data.severite }}
+        </span>
       </td>
     </tr>
     {% endfor %}
   </table>
-  {% endif %}
 </div>
+{% endif %}
+
+{# ── BRUTE-FORCE ── #}
+{% if analyse.ips_bruteforce %}
+<div class="card">
+  <div class="card-title">🔨 Brute-force détecté — {{ analyse.ips_bruteforce|length }} IP(s)</div>
+  <table>
+    <tr><th>IP source</th><th>Tentatives échouées</th><th>Sévérité</th></tr>
+    {% for bf in analyse.ips_bruteforce %}
+    <tr>
+      <td><code style="color:var(--blue)">{{ bf.ip }}</code></td>
+      <td><strong style="color:var(--red)">{{ bf.nb_echecs }}</strong></td>
+      <td>
+        <span class="badge {% if bf.severite == 'CRITIQUE' %}danger{% else %}warn{% endif %}">
+          {{ bf.severite }}
+        </span>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{# ── RECOMMANDATIONS ── #}
+{% if analyse.recommandations %}
+<div class="card">
+  <div class="card-title">✅ Recommandations actionnables</div>
+  {% for r in analyse.recommandations %}
+  <div class="check-row">
+    <div>
+      <div class="check-nom">{{ r.nom }}</div>
+      <div class="check-conseil">{{ r.action }}</div>
+    </div>
+    <span class="badge {% if r.severite == 'CRITIQUE' %}danger{% elif r.severite == 'HAUTE' %}danger{% else %}warn{% endif %}">
+      {{ r.severite }}
+    </span>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ── ALERTES DÉTAILLÉES ── #}
+{% if analyse.alertes %}
+<div class="card">
+  <div class="card-title">
+    ⚠ Événements suspects — {{ analyse.nb_alertes }}
+    {% if analyse.nb_alertes > 50 %}
+    <span class="dim" style="font-size:11px;font-weight:normal">
+      (affichage limité aux 50 premiers)
+    </span>
+    {% endif %}
+  </div>
+  <table>
+    <tr><th>Type</th><th>IP source</th><th>Sévérité</th><th>URL / Message</th></tr>
+    {% for a in analyse.alertes %}
+    <tr>
+      <td style="font-size:12px">{{ a.nom }}</td>
+      <td>
+        <code style="font-size:11px;color:var(--blue)">{{ a.ip or '—' }}</code>
+      </td>
+      <td>
+        <span class="badge {% if a.severite == 'CRITIQUE' %}danger{% elif a.severite == 'HAUTE' %}danger{% else %}warn{% endif %}">
+          {{ a.severite }}
+        </span>
+      </td>
+      <td style="font-size:10px;font-family:monospace;color:var(--dim);
+                 max-width:280px;overflow:hidden;word-break:break-all">
+        {{ a.url[:100] }}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% endif %}
 {% endblock %}
