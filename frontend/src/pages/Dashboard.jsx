@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from "recharts";
 
 // ── Composants
@@ -139,7 +139,6 @@ export default function Dashboard() {
   ];
 
   const nbCritiques = alertes.filter(a => a.type === "CRITIQUE").length;
-  const nbHautes    = alertes.filter(a => a.type === "HAUTE").length;
 
   return (
     <div>
